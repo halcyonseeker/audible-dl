@@ -253,11 +253,12 @@ func xSingleBook(dom *html.Tokenizer, tt html.TokenType, tok html.Token) (Book) 
 func GetAllBooks() ([]Book, error) {
 	var books []Book
 
-	raw, err := getLibraryPage()
+	user, pass := getCredentials()
+	raw, err := getLibraryPage(user, pass, 0)
 	if err != nil {
 		// We weren't able to get the first page
 		fmt.Fprintf(os.Stderr, "%s\n", err)
-		return nil, errors.New("Failed to open library page")
+		return nil, errors.New("I can't access your library :(")
 	}
 
 	dom := html.NewTokenizer(bytes.NewReader(raw))
@@ -278,11 +279,15 @@ func GetAllBooks() ([]Book, error) {
 			if id(tok) == "center-6" {
 				break
 			}
+
+		} else if tt == html.ErrorToken {
+			break
 		}
 	}
 
 	if len(books) == 0 {
-		return nil, errors.New("I couldn't find any books in the HTML")
+		fmt.Printf("%s\n", bytes.NewReader(raw))
+		return nil, errors.New("I couldn't find any books in the HTML :(")
 	}
 
 	return books, nil
