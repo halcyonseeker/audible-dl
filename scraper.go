@@ -253,8 +253,7 @@ func xSingleBook(dom *html.Tokenizer, tt html.TokenType, tok html.Token) (Book) 
 func GetAllBooks() ([]Book, error) {
 	var books []Book
 
-	user, pass := getCredentials()
-	raw, err := getLibraryPage(user, pass, 0)
+	raw, err := getLibraryPage(0)
 	if err != nil {
 		// We weren't able to get the first page
 		fmt.Fprintf(os.Stderr, "%s\n", err)
@@ -299,8 +298,7 @@ func GetAllBooks() ([]Book, error) {
 func GetLatestBooks(latest string) ([]Book, error) {
 	var books []Book
 
-	user, pass := getCredentials()
-	raw, err := getLibraryPage(user, pass, 0)
+	raw, err := getLibraryPage(0)
 	if err != nil {
 		// We weren't able to get the first page
 		fmt.Fprintf(os.Stderr, "%s\n", err)
