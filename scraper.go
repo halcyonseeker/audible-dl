@@ -12,6 +12,9 @@ import (
 	"regexp"
 	"strings"
 	"strconv"
+	"net/url"
+	"net/http"
+	"net/http/cookiejar"
 	"io/ioutil"
 	"golang.org/x/net/html"
 )
@@ -33,14 +36,63 @@ type Book struct {
 }
 
 ////////////////////////////////////////////////////////////////////////
-// For now this just opens the file
-func getLibraryPage() ([]byte, error) {
-	html, err := ioutil.ReadFile("titles.html")
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
-		return nil, errors.New("Failed to open titles.html")
+// Temporary function to download a page from Audible
+func getLibraryPage(page int) ([]byte, error) {
+	// These yield the Amazon sign in page
+	urlparams := url.Values{
+	}
+	bodyparams := url.Values{
 	}
 
+	// Create a HTTP client with a cookie jar
+	jar, _ := cookiejar.New(nil)
+	client := &http.Client{ Jar: jar, }
+
+	// Create the request
+	uri    := "https://www.amazon.com/ap/signin?" + urlparams.Encode()
+	body   := strings.NewReader(bodyparams.Encode())
+	req, _ := http.NewRequest("POST", uri, body)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	// We need to send these cookies along with the login information
+	cookies := []*http.Cookie {
+		&http.Cookie{Name: "csm-hit", Value: ""},
+		&http.Cookie{Name: "session-id", Value: ""},
+		&http.Cookie{Name: "session-id-time", Value: ""},
+		&http.Cookie{Name: "session-token", Value: ""},
+		&http.Cookie{Name: "ubid-acbus", Value: ""},
+	}
+	jarurl, _ := url.ParseRequestURI(uri)
+	jar.SetCookies(jarurl, cookies)
+
+	// Send the request
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+		return nil, errors.New("I couldn't reach the server")
+	}
+
+	// Begin Debug Prints
+	fmt.Println("+=============================== Request URI and Body")
+	fmt.Fprintf(os.Stderr, "| uri : %s\n", uri)
+	fmt.Fprintf(os.Stderr, "| body: %s\n", bodyparams.Encode())
+	fmt.Println("+=============================== Request Cookies")
+	for _, c := range cookies {
+		fmt.Printf("| %s: %s\n", c.Name, c.Value)
+	}
+	fmt.Println("+=============================== Response Cookies")
+	for _, c := range resp.Cookies() {
+		fmt.Printf("| %s: %s\n", c.Name, c.Value)
+	}
+	fmt.Println("+=============================== Actual Output")
+	// End Debug Prints
+
+	if resp.StatusCode != 200 {
+		fmt.Fprintf(os.Stderr, "%s\n", resp.Status)
+		return nil, errors.New("Something is wrong with our request")
+	}
+
+	html, _ := ioutil.ReadAll(resp.Body)
 	return html, nil
 }
 
