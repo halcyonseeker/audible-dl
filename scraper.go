@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"net/http"
 	"net/http/cookiejar"
+	"encoding/json"
 	"io/ioutil"
 	"golang.org/x/net/html"
 )
@@ -36,6 +37,30 @@ type Book struct {
 }
 
 ////////////////////////////////////////////////////////////////////////
+// Return cached cookies to trick Audible into thinking we're a browser session
+func getSessionCookies() ([]*http.Cookie, error) {
+	var cookies []*http.Cookie
+
+	// TODO: If the cookies are old or not present, get new ones.
+	// For now we'll just assume the cookie file is present and
+	// contains valid cookies retrieved manually with inspect element.
+	// IIrc Audible.com's session cookies should last about 2 months.
+	raw, err := ioutil.ReadFile(".audible-dl-cookies.json")
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
+		return nil, errors.New("Failed to open cookie file")
+	}
+
+	jerr := json.Unmarshal(raw, &cookies)
+	if jerr != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", jerr)
+		return nil, errors.New("Cookie file contains invalid json")
+	}
+
+	return cookies, nil
+}
+
+////////////////////////////////////////////////////////////////////////
 // Download a HTMl page in the user's library
 func getLibraryPage(page int) ([]byte, error) {
 	jar, _ := cookiejar.New(nil)
@@ -43,14 +68,8 @@ func getLibraryPage(page int) ([]byte, error) {
 	uri    := "https://www.audible.com/library/titles"
 	req, _ := http.NewRequest("GET", uri, nil)
 
-	// We need to send these cookies along with the login information
-	cookies := []*http.Cookie {
-		&http.Cookie{Name: "csm-hit", Value: ""},
-		&http.Cookie{Name: "session-id", Value: ""},
-		&http.Cookie{Name: "session-id-time", Value: ""},
-		&http.Cookie{Name: "ubid-main", Value: ""},
-	}
-	jaruri, _ := url.ParseRequestURI(uri)
+	cookies, _ := getSessionCookies()
+	jaruri, _  := url.ParseRequestURI(uri)
 	jar.SetCookies(jaruri, cookies)
 
 	resp, err := client.Do(req)
