@@ -23,17 +23,17 @@ import (
 ////////////////////////////////////////////////////////////////////////
 // Each book is stored in one of these
 type Book struct {
-        Slug string             // B002VA9SWS
-        Title string            // "The Hitchhiker's Guide to the Galaxy"
-        Series string           // "The Hitchhiker's Guide to the Galaxy"
-        Runtime string          // "5 hrs and 51 minutes"
-        Summary string          // "Seconds before the Earth is demolished..."
-        CoverURL string         // "https://m.media-amazon.com/..."
-        DownloadURL string      // "https://cds.audible.com/..."
-        CompanionURL string     // ""
-        Authors []string        // ["Douglas Adams"]
-        Narrators []string      // ["Steven Fry"]
-        SeriesIndex int         // 1
+	Slug         string   // B002VA9SWS
+	Title        string   // "The Hitchhiker's Guide to the Galaxy"
+	Series       string   // "The Hitchhiker's Guide to the Galaxy"
+	Runtime      string   // "5 hrs and 51 minutes"
+	Summary      string   // "Seconds before the Earth is demolished..."
+	CoverURL     string   // "https://m.media-amazon.com/..."
+	DownloadURL  string   // "https://cds.audible.com/..."
+	CompanionURL string   // ""
+	Authors      []string // ["Douglas Adams"]
+	Narrators    []string // ["Steven Fry"]
+	SeriesIndex  int      // 1
 }
 
 ////////////////////////////////////////////////////////////////////////
