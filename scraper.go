@@ -84,7 +84,7 @@ func getSessionCookies() ([]*http.Cookie, error) {
 func getLibraryPage(page int) ([]byte, error) {
 	jar, _ := cookiejar.New(nil)
 	client := &http.Client{ Jar: jar, }
-	uri    := "https://www.audible.com/library/titles"
+	uri := "https://www.audible.com/library/titles?page=" + strconv.Itoa(page)
 	req, _ := http.NewRequest("GET", uri, nil)
 
 	cookies, _ := getSessionCookies()
@@ -325,43 +325,64 @@ func xSingleBook(dom *html.Tokenizer, tt html.TokenType, tok html.Token) (Book) 
 func GetAllBooks() ([]Book, error) {
 	var books []Book
 
-	raw, err := getLibraryPage(0)
-	if err != nil {
-		// We weren't able to get the first page
-		fmt.Fprintf(os.Stderr, "%s\n", err)
-		return nil, errors.New("I can't access your library :(")
-	}
+	// audible.com/library/titles?page=N doesn't return a 404 when
+	// we access pages that don't exist, so we'll store the slug of
+	// the first books of the current and previous pages in these
+	// respective variables and check against the current book's slug.
+	var firstincurrpage string = ""
+	var firstinprevpage string = ""
 
-	dom := html.NewTokenizer(bytes.NewReader(raw))
+	for i := 1; ; i++ {
+		raw, err := getLibraryPage(i)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s\n", err)
+			return nil, errors.New("I can't access your library :(")
+		}
 
-	for {
-		tt := dom.Next()
-		if tt == html.StartTagToken {
-			tok := dom.Token()
+		dom := html.NewTokenizer(bytes.NewReader(raw))
 
-			// If we find a book, extract it
-			if class(tok) == "adbl-library-content-row" {
-				book := xSingleBook(dom, tt, tok)
-				books = append(books, book)
-				continue
+		for {
+			tt := dom.Next()
+			if tt == html.StartTagToken {
+				tok := dom.Token()
+
+				// If we find a book, extract it
+				if class(tok) == "adbl-library-content-row" {
+					book := xSingleBook(dom, tt, tok)
+					if book.Slug == firstinprevpage {
+						// We've reached a duplicate page
+						return books, nil
+					}
+					books = append(books, book)
+					debugPrintBook(book)
+					if firstincurrpage == "" {
+						// Save the first book in the page
+						firstincurrpage = book.Slug
+					}
+					if firstinprevpage == "" {
+						// This is the first page
+						firstinprevpage = book.Slug
+					}
+					continue
+				}
+
+				// If it looks like we're getting to the end, break
+				if id(tok) == "center-6" {
+					break
+				}
+
+			} else if tt == html.ErrorToken { // EOF
+				break 
 			}
+		}
+		// We're fetching the next page, so we cycle these out
+		firstinprevpage = firstincurrpage
+		firstincurrpage = ""
 
-			// If it looks like we're getting to the end, break
-			if id(tok) == "center-6" {
-				break
-			}
-
-		} else if tt == html.ErrorToken {
-			break
+		if len(books) == 0 {
+			return nil, errors.New("I couldn't find any books in the HTML :(")
 		}
 	}
-
-	if len(books) == 0 {
-		fmt.Printf("%s\n", bytes.NewReader(raw))
-		return nil, errors.New("I couldn't find any books in the HTML :(")
-	}
-
-	return books, nil
 }
 
 ////////////////////////////////////////////////////////////////////////
