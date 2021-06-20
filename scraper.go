@@ -97,15 +97,15 @@ func getLibraryPage(page int) ([]byte, error) {
 		return nil, errors.New("I couldn't reach the server")
 	}
 
-	fmt.Println("+=============================== Request Cookies")
-	for _, c := range cookies {
-		fmt.Printf("| %s: %s\n", c.Name, c.Value)
-	}
-	fmt.Println("+=============================== Response Cookies")
-	for _, c := range resp.Cookies() {
-		fmt.Printf("| %s: %s\n", c.Name, c.Value)
-	}
-	fmt.Println("+=============================== Actual Output")
+	// fmt.Println("+=============================== Request Cookies")
+	// for _, c := range cookies {
+	// 	fmt.Printf("| %s: %s\n", c.Name, c.Value)
+	// }
+	// fmt.Println("+=============================== Response Cookies")
+	// for _, c := range resp.Cookies() {
+	// 	fmt.Printf("| %s: %s\n", c.Name, c.Value)
+	// }
+	// fmt.Println("+=============================== Actual Output")
 
 	if resp.StatusCode != 200 {
 		fmt.Fprintf(os.Stderr, "%s\n", resp.Status)
@@ -333,6 +333,7 @@ func GetAllBooks() ([]Book, error) {
 	var firstinprevpage string = ""
 
 	for i := 1; ; i++ {
+		fmt.Printf("\tPage %d...", i)
 		raw, err := getLibraryPage(i)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "%s\n", err)
@@ -351,10 +352,10 @@ func GetAllBooks() ([]Book, error) {
 					book := xSingleBook(dom, tt, tok)
 					if book.Slug == firstinprevpage {
 						// We've reached a duplicate page
+						fmt.Printf("ok\n")
 						return books, nil
 					}
 					books = append(books, book)
-					debugPrintBook(book)
 					if firstincurrpage == "" {
 						// Save the first book in the page
 						firstincurrpage = book.Slug
@@ -378,6 +379,7 @@ func GetAllBooks() ([]Book, error) {
 		// We're fetching the next page, so we cycle these out
 		firstinprevpage = firstincurrpage
 		firstincurrpage = ""
+		fmt.Printf("ok\n")
 
 		if len(books) == 0 {
 			return nil, errors.New("I couldn't find any books in the HTML :(")
