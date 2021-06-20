@@ -299,7 +299,7 @@ func xSingleBook(dom *html.Tokenizer, tt html.TokenType, tok html.Token) (Book) 
 			book.Series, book.SeriesIndex = xSeries(dom, tt, tok)
 			continue
 
-		} else if aria_label(tok) == "DownloadFull" {
+		} else if aria_label(tok) != "DownloadFull" && strings.Contains(href(tok), "cds.audible.com/download") {
 			////////// DOWNLOAD URL
 			book.DownloadURL = href(tok)
 			continue
