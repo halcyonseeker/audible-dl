@@ -9,6 +9,7 @@ package main
 import (
 	"os"
 	"fmt"
+	"log"
 )
 
 //
@@ -16,10 +17,17 @@ import (
 //
 func main() {
 
-	_, err := GetAllBooks()
+	err := os.Mkdir(".audible-dl-tmp", 0755)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
-		fmt.Fprintf(os.Stderr, "I wasn't able to scrape you library :(")
-		os.Exit(1)
+		if err.(*os.PathError).Err.Error() == "file exists" {
+			log.Fatal("TODO: attempt to recover from error")
+		}
+	}
+
+	books, err := GetAllBooks()
+	if err != nil {
+		log.Fatal(err);
+	}
+
 	}
 }
