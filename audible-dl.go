@@ -26,13 +26,13 @@ func main() {
 
 	books, err := GetAllBooks()
 	if err != nil {
-		log.Fatal(err);
+		log.Fatal(err)
 	}
 
 	for i := 0; i < 2; i++ {
 		file, err := DownloadBook(books[i])
 		if err != nil {
-			log.Fatal(err);
+			log.Fatal(err)
 		}
 		fmt.Println(file)
 	}
