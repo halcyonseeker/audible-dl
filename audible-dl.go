@@ -8,7 +8,6 @@ package main
 
 import (
 	"os"
-	"fmt"
 	"log"
 )
 
@@ -30,10 +29,9 @@ func main() {
 	}
 
 	for i := 0; i < 2; i++ {
-		file, err := DownloadBook(books[i])
+		err := DownloadBook(books[i])
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Println(file)
 	}
 }

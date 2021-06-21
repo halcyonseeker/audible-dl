@@ -29,6 +29,7 @@ type Book struct {
 	Runtime      string   // "5 hrs and 51 minutes"
 	Summary      string   // "Seconds before the Earth is demolished..."
 	CoverURL     string   // "https://m.media-amazon.com/..."
+	FileName     string   // "TheHitchhikersGuidetotheGalaxy"
 	DownloadURL  string   // "https://cds.audible.com/..."
 	CompanionURL string   // ""
 	Authors      []string // ["Douglas Adams"]
@@ -114,6 +115,15 @@ func getLibraryPage(page int) ([]byte, error) {
 
 	html, _ := ioutil.ReadAll(resp.Body)
 	return html, nil
+}
+
+////////////////////////////////////////////////////////////////////////
+// Remove whitespace and other shell reserve characters from S
+func stripstr(s string) (string) {
+	r := regexp.MustCompile(`\s|\\|\(|\)|\[|\]|\*`)
+	s = r.ReplaceAllString(s, "")
+
+	return s
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -316,6 +326,8 @@ func xSingleBook(dom *html.Tokenizer, tt html.TokenType, tok html.Token) (Book) 
 			break
 		}
 	}
+
+	book.FileName = stripstr(book.Title)
 
 	return book
 }
