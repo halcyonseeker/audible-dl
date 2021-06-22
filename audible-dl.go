@@ -28,6 +28,13 @@ func main() {
 		}
 	}
 
+	err := os.Mkdir(".audible-dl-converting", 0755)
+	if err != nil {
+		if err.(*os.PathError).Err.Error() == "file exists" {
+			log.Fatal("TODO: attempt to recover from error")
+		}
+	}
+
 	books, err := GetAllBooks()
 	if err != nil {
 		log.Fatal(err)
