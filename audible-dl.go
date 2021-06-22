@@ -21,7 +21,7 @@ func getFarsideBooks(far []Book) []Book {
 //
 func main() {
 
-	err := os.Mkdir(".audible-dl-tmp", 0755)
+	err := os.Mkdir(".audible-dl-downloading", 0755)
 	if err != nil {
 		if err.(*os.PathError).Err.Error() == "file exists" {
 			log.Fatal("TODO: attempt to recover from error")

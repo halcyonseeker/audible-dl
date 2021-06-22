@@ -15,7 +15,7 @@ import (
 ////////////////////////////////////////////////////////////////////////
 // Take a pointer to a book struct, download it, and return its path
 func DownloadBook(b Book) error {
-	aaxname := ".audible-dl-tmp/" + b.FileName + ".aax"
+	aaxname := ".audible-dl-downloading/" + b.FileName + ".aax"
 	fmt.Printf("\tDownloading %s...", aaxname)
 
 	// Append .part to differentiate partially downloaded files
