@@ -11,6 +11,11 @@ import (
 	"log"
 )
 
+// Later we'll generate a list of the ones we don't have
+func getFarsideBooks(far []Book) []Book {
+	return far
+}
+
 //
 // TEMPORARY DRIVER CODE FOR LIBRARY SCRAPER
 //
@@ -28,8 +33,17 @@ func main() {
 		log.Fatal(err)
 	}
 
-	for i := 0; i < 2; i++ {
-		err := DownloadBook(books[i])
+	latest := getFarsideBooks(books)
+
+	for i := 0; i < 1; i++ {
+		err := DownloadBook(latest[i])
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
+	for i := 0; i < 1; i++ {
+		err := CrackAAX(latest[i])
 		if err != nil {
 			log.Fatal(err)
 		}
