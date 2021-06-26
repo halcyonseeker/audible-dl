@@ -16,31 +16,36 @@ import (
 // Take a pointer to a book struct, download it, and return its path
 func DownloadBook(b Book) error {
 	aaxname := ".audible-dl-downloading/" + b.FileName + ".aax"
-	fmt.Printf("\tDownloading %s...", aaxname)
+	fmt.Printf("\tDownloading %s...", b.FileName)
 
 	// Append .part to differentiate partially downloaded files
 	out, err := os.Create(aaxname + ".part")
 	if err != nil {
+		fmt.Printf("\n")
 		return err
 	}
 	defer out.Close()
 
 	resp, err := http.Get(b.DownloadURL)
 	if err != nil {
+		fmt.Printf("\n")
 		return err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("\n")
 		return errors.New("Request returned " + resp.Status)
 	}
 
 	bytes, err := io.Copy(out, resp.Body)
 	if err != nil {
+		fmt.Printf("\n")
 		return err
 	}
 
 	if bytes != resp.ContentLength {
+		fmt.Printf("\n")
 		return errors.New("Failed to write file to disk")
 	}
 
