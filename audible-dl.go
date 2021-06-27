@@ -39,6 +39,7 @@ func main() {
 		if err.(*os.PathError).Err.Error() == "file exists" {
 			fmt.Println("\033[33mWarning:\033[m Found partial files from last session.")
 			os.RemoveAll(".audible-dl-converting")
+			os.Mkdir(".audible-dl-converting", 0755)
 		}
 	}
 
@@ -46,6 +47,7 @@ func main() {
 		if err.(*os.PathError).Err.Error() == "file exists" {
 			fmt.Println("\033[33mWarning:\033[m Found AAX files from last session.")
 			os.RemoveAll(".audible-dl-downloading")
+			os.Mkdir(".audible-dl-downloading", 0755)
 		}
 	}
 
