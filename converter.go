@@ -12,19 +12,22 @@ import (
 
 ////////////////////////////////////////////////////////////////////////
 // Take a book struct with a corresponding aax file and convert it to opus
-func CrackAAX(filename string) error {
+func CrackAAX(filename string, cfg Config) error {
 	infile  := "./.audible-dl-downloading/" + filename + ".aax"
 	outfile := "./.audible-dl-converting/" + filename + ".opus"
-	bytes := "deadbeef"
+
+	// fmt.Println("infile: ", infile)
+	// fmt.Println("outfile:", outfile)
+	// fmt.Println("bytes:  ", cfg.Bytes)
 
 	fmt.Printf("\tConverting %s...", filename)
 	cmd := exec.Command("ffmpeg",
-		"-activation_bytes", bytes, // Key to decrypt .aax file
-		"-i", infile,				// Specify the input
-		"-vn",						// We'll encode the cover image later
-		"-c:a", "libopus",			// Use the libopus encoder
+		"-activation_bytes", cfg.Bytes, // Key to decrypt .aax file
+		"-i", infile,				    // Specify the input
+		"-vn",						    // Encode the cover image later
+		"-c:a", "libopus",			    // Use the libopus encoder
 		outfile)
-	cmd.Stdout = nil                // Send output to /dev/null
+	cmd.Stdout = nil                    // Send output to /dev/null
 
 	// We'll return when the process completes
 	err := cmd.Run()

@@ -10,8 +10,12 @@ import (
 	"os"
 	"log"
 	"fmt"
+	"flag"
 	"regexp"
 )
+
+// Global configuration object
+var cfg Config
 
 // Inefficiently compute and return a list of the books we don't have downloaded
 func getFarsideBooks(far []Book) []Book {
@@ -42,7 +46,7 @@ func recoverPreviousSession() {
 		if string(d.Name()[len(d.Name())-3:])  == "aax" {
 			r := regexp.MustCompile(`\.aax$`)
 			name := r.ReplaceAllString(d.Name(), "")
-			if err := CrackAAX(name); err != nil {
+			if err := CrackAAX(name, cfg); err != nil {
 				log.Print(err)
 			}
 		}
@@ -51,6 +55,10 @@ func recoverPreviousSession() {
 }
 
 func main() {
+	// Command line arguments
+	flag.StringVar(&cfg.Bytes, "b", "", "Your Audible activation bytes")
+	flag.Parse()
+
 	if err := os.Mkdir(".audible-dl-converting", 0755); err != nil {
 		if err.(*os.PathError).Err.Error() == "file exists" {
 			fmt.Println("\033[33mWarning:\033[m Found partial files from last session.")
@@ -91,7 +99,7 @@ func main() {
 
 	fmt.Println("\033[1mConverting Books:\033[m")
 	for _, b := range latest {
-		if err := CrackAAX(b.FileName); err != nil {
+		if err := CrackAAX(b.FileName, cfg); err != nil {
 			log.Print(err)
 		}
 	}
