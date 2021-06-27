@@ -29,7 +29,7 @@ func CrackAAX(filename string) error {
 	// We'll return when the process completes
 	err := cmd.Run()
 	if err != nil {
-		fmt.Printf("\033[32mfailed\033[m\n")
+		fmt.Printf("\033[31mfailed\033[m\n")
 		return err
 	}
 

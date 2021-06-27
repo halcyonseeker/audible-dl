@@ -348,7 +348,7 @@ func GetAllBooks() ([]Book, error) {
 		fmt.Printf("\tPage %d...", i)
 		raw, err := getLibraryPage(i)
 		if err != nil {
-			fmt.Printf("\033[32mfailed\033[m\n")
+			fmt.Printf("\033[31mfailed\033[m\n")
 			fmt.Fprintf(os.Stderr, "%s\n", err)
 			return nil, errors.New("I can't access your library :(")
 		}
@@ -395,7 +395,7 @@ func GetAllBooks() ([]Book, error) {
 		fmt.Printf("ok\n")
 
 		if len(books) == 0 {
-			fmt.Printf("\033[32mfailed\033[m\n")
+			fmt.Printf("\033[31mfailed\033[m\n")
 			return nil, errors.New("I couldn't find any books in the HTML :(")
 		}
 	}
