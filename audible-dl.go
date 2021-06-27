@@ -34,6 +34,22 @@ func getFarsideBooks(far []Book) []Book {
 	return far
 }
 
+// If we find fully downloaded but not converted aax files, convert them
+func recoverPreviousSession() {
+	fmt.Println("\033[1mConverting Recovered Books:\033[m")
+	dirents, _ := os.ReadDir(".audible-dl-downloading")
+	for _, d := range dirents {
+		if string(d.Name()[len(d.Name())-3:])  == "aax" {
+			r := regexp.MustCompile(`\.aax$`)
+			name := r.ReplaceAllString(d.Name(), "")
+			if err := CrackAAX(name); err != nil {
+				log.Print(err)
+			}
+		}
+		os.Remove(".audible-dl-downloading/" + d.Name())
+	}
+}
+
 func main() {
 	if err := os.Mkdir(".audible-dl-converting", 0755); err != nil {
 		if err.(*os.PathError).Err.Error() == "file exists" {
@@ -46,6 +62,7 @@ func main() {
 	if err := os.Mkdir(".audible-dl-downloading", 0755); err != nil {
 		if err.(*os.PathError).Err.Error() == "file exists" {
 			fmt.Println("\033[33mWarning:\033[m Found AAX files from last session.")
+			recoverPreviousSession()
 			os.RemoveAll(".audible-dl-downloading")
 			os.Mkdir(".audible-dl-downloading", 0755)
 		}
