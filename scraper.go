@@ -94,8 +94,7 @@ func getLibraryPage(page int) ([]byte, error) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err)
-		return nil, errors.New("I couldn't reach the server")
+		return nil, err
 	}
 
 	// fmt.Println("+=============================== Request Cookies")
@@ -109,8 +108,7 @@ func getLibraryPage(page int) ([]byte, error) {
 	// fmt.Println("+=============================== Actual Output")
 
 	if resp.StatusCode != 200 {
-		fmt.Fprintf(os.Stderr, "%s\n", resp.Status)
-		return nil, errors.New("Something is wrong with our request")
+		return nil, errors.New("getLibraryPage: " + resp.Status)
 	}
 
 	html, _ := ioutil.ReadAll(resp.Body)
@@ -349,8 +347,7 @@ func GetAllBooks() ([]Book, error) {
 		raw, err := getLibraryPage(i)
 		if err != nil {
 			fmt.Printf("\033[31mfailed\033[m\n")
-			fmt.Fprintf(os.Stderr, "%s\n", err)
-			return nil, errors.New("I can't access your library :(")
+			return nil, err
 		}
 
 		dom := html.NewTokenizer(bytes.NewReader(raw))
