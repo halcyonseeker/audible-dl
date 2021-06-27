@@ -28,24 +28,24 @@ func DownloadBook(b Book) error {
 
 	resp, err := http.Get(b.DownloadURL)
 	if err != nil {
-		fmt.Printf("\n")
+		fmt.Printf("\033[32mfailed\033[m\n")
 		return err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		fmt.Printf("\n")
+		fmt.Printf("\033[32mfailed\033[m\n")
 		return errors.New("Request returned " + resp.Status)
 	}
 
 	bytes, err := io.Copy(out, resp.Body)
 	if err != nil {
-		fmt.Printf("\n")
+		fmt.Printf("\033[32mfailed\033[m\n")
 		return err
 	}
 
 	if bytes != resp.ContentLength {
-		fmt.Printf("\n")
+		fmt.Printf("\033[32mfailed\033[m\n")
 		return errors.New("Failed to write file to disk")
 	}
 
