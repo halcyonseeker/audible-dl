@@ -1,6 +1,6 @@
 //
 // audible-dl.go --- A simple tool for archiving your audible library
-// git.sr.ht/~thalia/audible-dl
+// sr.ht/~thalia/audible-dl
 // ꙮ <ymir@ulthar.xyz>
 //
 
