@@ -1,7 +1,7 @@
 //
 // audible-dl.go --- A simple tool for archiving your audible library
-// git.sr.ht/~thalia/audible-dl
-// Thalia Wright <vesperous@protonmail.com>
+// sr.ht/~thalia/audible-dl
+// Thalia Wright <ymir@ulthar.xyz>
 //
 
 package main
