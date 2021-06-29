@@ -23,11 +23,11 @@ func CrackAAX(filename string, cfg Config) error {
 	fmt.Printf("\tConverting %s...", filename)
 	cmd := exec.Command("ffmpeg",
 		"-activation_bytes", cfg.Bytes, // Key to decrypt .aax file
-		"-i", infile,				    // Specify the input
-		"-vn",						    // Encode the cover image later
-		"-c:a", "libopus",			    // Use the libopus encoder
+		"-i", infile,                   // Specify the input
+		"-vn",                          // Encode the cover image later
+		"-c:a", "libopus",              // Use the libopus encoder
 		outfile)
-	cmd.Stdout = nil                    // Send output to /dev/null
+	cmd.Stdout = nil                        // Send output to /dev/null
 
 	// We'll return when the process completes
 	err := cmd.Run()
