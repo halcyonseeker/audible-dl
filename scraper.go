@@ -40,25 +40,6 @@ type Book struct {
 	SeriesIndex  int      // 1
 }
 
-////////////////////////////////////////////////////////////////////////
-// Pretty-print the fields of a book structure
-func debugPrintBook(b Book) {
-	fmt.Println("\033[1m================================================\033[m")
-	fmt.Println("\033[1mSLUG:\033[m        ", b.Slug)
-	fmt.Println("\033[1mTITLE:\033[m       ", b.Title)
-	fmt.Println("\033[1mSERIES:\033[m      ", b.Series)
-	fmt.Println("\033[1mNUMBER:\033[m      ", b.SeriesIndex)
-	fmt.Println("\033[1mRUNTIME:\033[m     ", b.Runtime)
-	fmt.Println("\033[1mSUMMARY:\033[m     ", b.Summary)
-	fmt.Println("\033[1mAUTHOR(S)\033[m:   ", b.Authors)
-	fmt.Println("\033[1mNARRATOR(S)\033[m: ", b.Narrators)
-	fmt.Println("\033[1m------------------------------------------------\033[m")
-	fmt.Println("\033[1mCOVER URL:\033[m   ", b.CoverURL)
-	fmt.Println("\033[1mDOWNLOAD U\033[mRL:", b.DownloadURL)
-	fmt.Println("\033[1mRESOURCE U\033[mRL:", b.CompanionURL)
-	fmt.Println("\033[1m================================================\033[m")
-}
-
 // Fetch cookies
 func renewCookies() error {
 	return nil
