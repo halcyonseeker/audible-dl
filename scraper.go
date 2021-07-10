@@ -20,6 +20,9 @@ import (
 	"golang.org/x/net/html"
 )
 
+// If our cookies expire, make sure GetAllBooks only recurs once
+var haveRecurred bool = false
+
 ////////////////////////////////////////////////////////////////////////
 // Each book is stored in one of these
 type Book struct {
@@ -56,15 +59,19 @@ func debugPrintBook(b Book) {
 	fmt.Println("\033[1m================================================\033[m")
 }
 
+// Fetch cookies
+func renewCookies() error {
+	return nil
+}
+
 ////////////////////////////////////////////////////////////////////////
 // Return cached cookies to trick Audible into thinking we're a browser session
 func getSessionCookies() ([]*http.Cookie, error) {
 	var cookies []*http.Cookie
 
-	// TODO: If the cookies are old or not present, get new ones.
-	// For now we'll just assume the cookie file is present and
-	// contains valid cookies retrieved manually with inspect element.
-	// IIrc Audible.com's session cookies should last about 2 months.
+	// Assume the cookie file is present and the cookies are valid.
+	// If either of theses assumptions are false, GetAllBooks will fail
+	// and recursively attempt to fetch new cookies.
 	raw, err := ioutil.ReadFile(".audible-dl-cookies.json")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n", err)
@@ -391,9 +398,25 @@ func GetAllBooks() ([]Book, error) {
 		firstincurrpage = ""
 		fmt.Printf("ok\n")
 
+		// If we didn't extract any books on the first run, assume
+		// the cookies are old, renew them, and recursively try again.
+		// Otherwise there has probably been a change to the HTML.
 		if len(books) == 0 {
-			fmt.Printf("\033[31mfailed\033[m\n")
-			return nil, errors.New("I couldn't find any books in the HTML :(")
+			if haveRecurred {
+				return nil, errors.New("Audible changed their website")
+			} else {
+				err := renewCookies()
+				if err != nil {
+					return nil, err
+				}
+
+				haveRecurred = true
+				secondtry, err := GetAllBooks()
+				if err != nil {
+					return nil, err
+				}
+				return secondtry, nil
+			}
 		}
 	}
 }
