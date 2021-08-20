@@ -135,30 +135,27 @@ func getLibraryPage(page int) ([]byte, error) {
 	uri := "https://www.audible.com/library/titles?page=" + strconv.Itoa(page)
 	req, _ := http.NewRequest("GET", uri, nil)
 
-	cookies, _ := getSessionCookies()
-	jaruri, _  := url.ParseRequestURI(uri)
-	jar.SetCookies(jaruri, cookies)
-
-	resp, err := client.Do(req)
+	cookies, err := getSessionCookies()
 	if err != nil {
 		return nil, err
 	}
+	jaruri, _  := url.ParseRequestURI(uri)
+	jar.SetCookies(jaruri, cookies)
 
-	// fmt.Println("+=============================== Request Cookies")
-	// for _, c := range cookies {
-	// 	fmt.Printf("| %s: %s\n", c.Name, c.Value)
-	// }
-	// fmt.Println("+=============================== Response Cookies")
-	// for _, c := range resp.Cookies() {
-	// 	fmt.Printf("| %s: %s\n", c.Name, c.Value)
-	// }
-	// fmt.Println("+=============================== Actual Output")
+	fmt.Printf("\tPage %d...", page)
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Printf("\033[31mfailed\033[m\n")
+		return nil, err
+	}
 
 	if resp.StatusCode != 200 {
+		fmt.Printf("\033[31mfailed\033[m\n")
 		return nil, errors.New("getLibraryPage: " + resp.Status)
 	}
 
 	html, _ := ioutil.ReadAll(resp.Body)
+	fmt.Printf("ok\n")
 	return html, nil
 }
 
@@ -390,10 +387,8 @@ func GetAllBooks() ([]Book, error) {
 	var firstinprevpage string = ""
 
 	for i := 1; ; i++ {
-		fmt.Printf("\tPage %d...", i)
 		raw, err := getLibraryPage(i)
 		if err != nil {
-			fmt.Printf("\033[31mfailed\033[m\n")
 			return nil, err
 		}
 
@@ -409,7 +404,6 @@ func GetAllBooks() ([]Book, error) {
 					book := xSingleBook(dom, tt, tok)
 					if book.Slug == firstinprevpage {
 						// We've reached a duplicate page
-						fmt.Printf("ok\n")
 						return books, nil
 					}
 					books = append(books, book)
@@ -436,7 +430,6 @@ func GetAllBooks() ([]Book, error) {
 		// We're fetching the next page, so we cycle these out
 		firstinprevpage = firstincurrpage
 		firstincurrpage = ""
-		fmt.Printf("ok\n")
 
 		// If we didn't extract any books on the first run, assume
 		// the cookies are old, renew them, and recursively try again.
