@@ -40,8 +40,67 @@ type Book struct {
 	SeriesIndex  int      // 1
 }
 
-// Fetch cookies
+// Fetch new cookies when they expire or are not present
+// TODO: Handle bad credentials and don't echo the password
 func renewCookies() error {
+	// We'll store the cookies we need in here
+	var cookies []*http.Cookie
+
+	// Set up a client that can store cookies
+	jar, _ := cookiejar.New(nil)
+	client := &http.Client{ Jar: jar, }
+
+	// Get the data we need to sign in
+	user, pass := func() (user, pass string) {
+		fmt.Printf("Amazon username: ")
+		fmt.Scanln(&user)
+		fmt.Printf("Amazon password: ")
+		fmt.Scanln(&pass)
+		return
+	}()
+	raw := strings.NewReader(url.Values{
+		"appAction": {"signin"},
+		"email": {user},
+		"create": {"0"},
+		"password": {pass},
+		"encryptedPasswordExpected": {""},
+	}.Encode())
+
+	// We need two requests, an initial GET request to get some cookies,
+	// and a POST request to give Audible our username and password
+	req1, _ := http.NewRequest("GET", "https://www.audible.com/signin", nil)
+	req2, _ := http.NewRequest("POST", "https://www.audible.com/signin", raw)
+
+	// Send the GET request, retrieving the ubid-main and csm-hit cookies.
+	res1, err := client.Do(req1)
+	if err != nil {
+		return err
+	}
+
+	// Add the previously retrieved cookies to the POST request and save
+	// the essential ones for later.
+	for _, c := range res1.Cookies() {
+		req2.AddCookie(c)
+	}
+
+	// Now sign in, retrieving the session-id and session-id-time cookies
+	res2, err := client.Do(req2)
+	if err != nil {
+		return err
+	}
+
+	// Extract the other two essential cookies
+	for _, c := range res2.Cookies() {
+		cookies = append(cookies, c)
+	}
+
+	// Finally cache the essential session cookies in a json file
+	jraw, _ := json.MarshalIndent(cookies, "", "  ")
+	err = ioutil.WriteFile(".audible-dl-cookies.json", jraw, 644)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
