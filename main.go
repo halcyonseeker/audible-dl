@@ -11,6 +11,7 @@ import (
 	"log"
 	"fmt"
 	"flag"
+	"strings"
 	"net/http"
 	"io/ioutil"
 	"encoding/json"
@@ -50,9 +51,13 @@ func importCookiesFromHAR(path string, cfg *ADLData) error {
 		(map[string]interface{})["cookies"].
 		([]interface{})
 	for _, c := range cookies {
+		value := c.(map[string]interface{})["value"].(string)
+		if strings.Contains(value, "\"") {
+			continue
+		}
 		cfg.Cookies = append(cfg.Cookies, &http.Cookie{
 			Name: c.(map[string]interface{})["name"].(string),
-			Value: c.(map[string]interface{})["value"].(string),
+			Value: value,
 		})
 	}
 
