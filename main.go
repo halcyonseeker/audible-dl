@@ -181,13 +181,13 @@ func main() {
 	// Create data files to store partially downloaded and converted
 	// audiobook files.
 
-	if err := os.Mkdir(".audible-dl-downloading", 0664); err != nil {
+	if err := os.Mkdir(".audible-dl-downloading", 0755); err != nil {
 		if !os.IsExist(err) {
 			log.Fatal(err)
 		}
 	}
 
-	if err := os.Mkdir(".audible-dl-converting", 0644); err != nil {
+	if err := os.Mkdir(".audible-dl-converting", 0755); err != nil {
 		if !os.IsExist(err) {
 			log.Fatal(err)
 		}
