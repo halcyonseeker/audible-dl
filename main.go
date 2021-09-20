@@ -100,6 +100,8 @@ func main() {
 	flag.StringVar(&harpath, "i", "", "Import a HAR file.")
 	flag.Parse()
 
+	// Read required information from the data file.  If it isn't present,
+	// tell the user how to create it.
 	if err := readDataFile(&cfg); err != nil {
 		if os.IsNotExist(err) && (bytes == "" || harpath == "") {
 			fmt.Printf("Data file is not present.  Please cd to " +
@@ -114,6 +116,9 @@ func main() {
 			log.Fatal(err)
 		}
 	}
+
+	// Handle command-line arguments used to build the data file.  Cookies
+	// might expire so we process them regaurdless of the its presence.
 
 	if bytes != "" {
 		cfg.Bytes = bytes
@@ -131,15 +136,21 @@ func main() {
 		}
 	}
 
-	fmt.Println("Bytes:", cfg.Bytes)
-	for _, c := range cfg.Cookies {
-		fmt.Println("Name:", c.Name, "Value:", c.Value)
-	}
+	// Scrape a list of all your audiobooks from audible's website then
+	// download and convert the ones that don't appear to be present in
+	// the current working directory.
+
 	books, err := RetrieveBooksListing(&cfg)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	for _, b := range books {
-		fmt.Println(b.Title)
+		if _, err := os.Stat(b.FileName + ".m4b"); err != nil {
+			if os.IsNotExist(err) {
+				// Download and convert the book
+				fmt.Println("I'm gonna get", b.Title)
+			}
+		}
 	}
 }
