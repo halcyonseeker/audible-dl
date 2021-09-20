@@ -52,6 +52,8 @@ func importCookiesFromHAR(path string, cfg *ADLData) error {
 		([]interface{})
 	for _, c := range cookies {
 		value := c.(map[string]interface{})["value"].(string)
+		// The values of some non-essential cookies contain a double
+		// quote character which net/http really doesn't like
 		if strings.Contains(value, "\"") {
 			continue
 		}
