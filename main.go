@@ -136,6 +136,21 @@ func main() {
 		}
 	}
 
+	// Create data files to store partially downloaded and converted
+	// audiobook files.
+
+	if err := os.Mkdir(".audible-dl-downloading", 0664); err != nil {
+		if !os.IsExist(err) {
+			log.Fatal(err)
+		}
+	}
+
+	if err := os.Mkdir(".audible-dl-converting", 0644); err != nil {
+		if !os.IsExist(err) {
+			log.Fatal(err)
+		}
+	}
+
 	// Scrape a list of all your audiobooks from audible's website then
 	// download and convert the ones that don't appear to be present in
 	// the current working directory.
@@ -152,5 +167,17 @@ func main() {
 				fmt.Println("I'm gonna get", b.Title)
 			}
 		}
+	}
+
+	// By now we should have downloaded and converted all the audiobooks
+	// not present in the current directory, so we can safely remove the
+	// cache directories.
+
+	if err := os.Remove(".audible-dl-downloading"); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := os.Remove(".audible-dl-converting"); err != nil {
+		log.Fatal(err)
 	}
 }
