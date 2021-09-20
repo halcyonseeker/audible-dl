@@ -130,4 +130,11 @@ func main() {
 	for _, c := range cfg.Cookies {
 		fmt.Println("Name:", c.Name, "Value:", c.Value)
 	}
+	books, err := RetrieveBooksListing(&cfg)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, b := range books {
+		fmt.Println(b.Title)
+	}
 }
