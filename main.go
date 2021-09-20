@@ -231,7 +231,8 @@ func main() {
 		log.Fatal(err)
 	}
 
-	for _, b := range books {
+	for i := 0; i < 3; i++ {
+		b := books[i]
 		if _, err := os.Stat(b.FileName + ".m4b"); err != nil {
 			if os.IsNotExist(err) {
 				// Download and convert the book
@@ -242,7 +243,6 @@ func main() {
 				if err := convertAAXToM4B(&b, &cfg); err != nil {
 					log.Fatal(err)
 				}
-				break // For testing
 			}
 		}
 	}
