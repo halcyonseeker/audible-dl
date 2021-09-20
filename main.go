@@ -7,10 +7,12 @@
 package main
 
 import (
+	"io"
 	"os"
 	"log"
 	"fmt"
 	"flag"
+	"errors"
 	"strings"
 	"net/http"
 	"io/ioutil"
@@ -24,6 +26,44 @@ type ADLData struct {
 	Bytes string
 	// Cookies, so that we can scrape your personal library
 	Cookies []*http.Cookie
+}
+
+// Download the audiobook passed as an argument, saving it as an aax file
+// in the .audible-dl-downloading directory.
+func downloadSingleBook(b *Book) error {
+	aax := ".audible-dl-downloading/" + b.FileName + ".aax"
+
+	// Append .part to differentiate partially downloaded files
+	out, err := os.Create(aax + ".part")
+	if err != nil {
+		return err
+	}
+
+	// Interestingly, the downlaod URLs are publicly accessible
+	resp, err := http.Get(b.DownloadURL)
+	if err != nil {
+		return err
+	} else {
+		if resp.StatusCode != http.StatusOK {
+			return errors.New("Request returned " + resp.Status)
+		}
+	}
+
+	bytes, err := io.Copy(out, resp.Body)
+	if err != nil {
+		return err
+	} else {
+		if bytes != resp.ContentLength {
+			return errors.New("Failed to write file to disk")
+		}
+	}
+
+	// Rename the file now that it has been fully downloaded
+	if err := os.Rename(aax + ".part", aax); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Owing to the general complexity of Amazon's login process, it's a lot
@@ -166,7 +206,11 @@ func main() {
 		if _, err := os.Stat(b.FileName + ".m4b"); err != nil {
 			if os.IsNotExist(err) {
 				// Download and convert the book
-				fmt.Println("I'm gonna get", b.Title)
+				fmt.Println("Downloading", b.Title)
+				if err := downloadSingleBook(&b); err != nil {
+					log.Fatal(err)
+				}
+				break // For testing
 			}
 		}
 	}
