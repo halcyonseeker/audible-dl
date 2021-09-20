@@ -14,6 +14,7 @@ import (
 	"flag"
 	"errors"
 	"strings"
+	"os/exec"
 	"net/http"
 	"io/ioutil"
 	"encoding/json"
@@ -26,6 +27,34 @@ type ADLData struct {
 	Bytes string
 	// Cookies, so that we can scrape your personal library
 	Cookies []*http.Cookie
+}
+
+// Convert the aax file corresponding to the book argument into a DRM-free
+// m4b file using the decryption key passed in cfg.Bytes.
+func convertAAXToM4B(b *Book, cfg *ADLData) error {
+	in := ".audible-dl-downloading/" + b.FileName + ".aax"
+	out := ".audible-dl-converting/" + b.FileName + ".m4b"
+
+	cmd := exec.Command("ffmpeg",
+		"-activation_bytes", cfg.Bytes,
+		"-i", in,
+		"-c", "copy",
+		out)
+	cmd.Stdout = nil
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	// Move the now fully converted m4b file out of the temp dir and
+	// remove the aax file
+	if err := os.Rename(out, b.FileName + ".m4b"); err != nil {
+		return err
+	}
+	if err := os.Remove(in); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Download the audiobook passed as an argument, saving it as an aax file
@@ -208,6 +237,9 @@ func main() {
 				// Download and convert the book
 				fmt.Println("Downloading", b.Title)
 				if err := downloadSingleBook(&b); err != nil {
+					log.Fatal(err)
+				}
+				if err := convertAAXToM4B(&b, &cfg); err != nil {
 					log.Fatal(err)
 				}
 				break // For testing
