@@ -249,20 +249,16 @@ func getLibraryPage(page int, cfg *ADLData) ([]byte, error) {
 	jaruri, _ := url.ParseRequestURI(uri)
 	jar.SetCookies(jaruri, cfg.Cookies)
 
-	fmt.Printf("\tPage %d...", page)
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Printf("\033[31mfailed\033[m\n")
 		return nil, err
 	}
 
 	if resp.StatusCode != 200 {
-		fmt.Printf("\033[31mfailed\033[m\n")
 		return nil, errors.New("getLibraryPage: " + resp.Status)
 	}
 
 	html, _ := ioutil.ReadAll(resp.Body)
-	fmt.Printf("ok\n")
 	return html, nil
 }
 
@@ -278,8 +274,11 @@ func RetrieveBooksListing(cfg *ADLData) ([]Book, error) {
 	var firstinprevpage string = ""
 
 	for i := 1; ; i++ {
+		fmt.Printf("\x1b[2k\r")
+		fmt.Printf("\033[1mScraping Page\033[m %d", i)
 		raw, err := getLibraryPage(i, cfg)
 		if err != nil {
+			fmt.Printf("\n")
 			return nil, err
 		}
 
@@ -295,6 +294,9 @@ func RetrieveBooksListing(cfg *ADLData) ([]Book, error) {
 					book := xSingleBook(dom, tt, tok)
 					if book.Slug == firstinprevpage {
 						// We've reached a duplicate page
+						fmt.Printf("\x1b[2k\r" +
+							"\033[1mScraped Page\033[m" +
+							" %d/%d\n", i, i)
 						return books, nil
 					}
 					books = append(books, book)
@@ -326,6 +328,7 @@ func RetrieveBooksListing(cfg *ADLData) ([]Book, error) {
 		// we probably won't extract any from the next, so we should
 		// just break and return an error
 		if len(books) == 0 {
+			fmt.Printf("\n")
 			return nil, errors.New("Failed to extract books from HTML")
 		}
 	}
