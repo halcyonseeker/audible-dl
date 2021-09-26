@@ -1,8 +1,9 @@
 audible-dl --- An archiver for your Audible library
 ===================================================
 
-**This program is slow and stupid. Important functionality like
-concurrent downloads has not been implemented.**
+**This program is a work in progress.  At present it doesn't do
+concurrent downloads, so if you have a large library it might take
+several days to download everything.**
 
 Audible-dl is an archiving tool that keeps an up-to-date, offline,
 archive of the audiobooks you've purchased with Audible as DRM-free,
@@ -10,68 +11,46 @@ metadata rich, opus files.
 
 It is intended for individuals who wish to effortlessly maintain an
 offline store of their Audiobooks to browse and listen to on their own
-terms. Please do not use audible-dl to upload books to piracy sites;
+terms.  Please do not use audible-dl to upload books to piracy sites;
 authors and narrators need to make a living somehow.
 
 Install
 -------
 Audible-dl depends on ffmpeg and the Go programming language. You
 should be able to build it for any OS supported by the Go compiler,
-however I've only tested it on Arch GNU/Linux and FreeBSD. If you're
-running a Unix like operating system you can install audible-dl to
-/usr/local/bin by running `make install` as root.
+however I've only tested it on Arch GNU/Linux and FreeBSD.  Build it
+with `go build`.
 
 User Guide
 ----------
-Audible-dl stores all your books in a single directory, `~/Audiobooks`
-let's say.
+Audible-dl stores all your books in the current working directory.  To
+set it up, you need three things.
 
-1. Login to Audible in your browser, navigate to
-   <https://audible.com/library/titles>, pop open inspect-element and
-   manually copy over the request cookies into the follwing Json
-   object in `~/Audiobooks/.audible-dl-cookies.json`:
+1. A directory to store your audiobooks in (eg, `~/Audiobooks`),
 
-    ```json
-    [
-        { "Name": "csm-hit", "Value": "" },
-        { "Name": "session-id", "Value": "" },
-        { "Name": "session-id-time", "Value": "" },
-        { "Name": "ubid-main", "Value": "" }
-    ]
-	```
+2. Your activation bytes.  There are a number of guides online of how
+   to get them.
 
-2. Acquire your activation bytes. There are a number of guides online
-   of how to do it.
+3. An archive of your Audible login cookies.  Open a browser, log into
+   Audible, navigate to <https://audible.com/library/titles>, open the
+   network tab in inspect element, and reload the page.  Right click
+   on the `/library/titles` GET request and select `Save as HAR`.
 
-3. In the audiobooks directory, just run `audible-dl -b deadbeef`. If
-   this is the first run it will download all your audiobooks, storing
-   them in the current directory. Subsequent runs will download only
-   those books that aren't present, so it's recommended that you don't
-   change the file names
+Now navigate to your audiobooks directory and run
 
-4. Enjoy!
+    audible-dl -i [path/to/request.har] -b [bytes]
+
+This will cache your authentication cookies and activation bytes in
+the file `.audible-dl.json`.
 
 TODO
 ----
 - **Concurrently download and convert books.** We've been doing this
-  sequentially for prototyping's sake, but this is dumb. We'll also
+  sequentially for prototyping's sake, but this is dumb.  We'll also
   have to re-work the status outputs to work with concurrent downloads
   and conversions
 - **Add command-line options.** Stuff like -d to specify a different
-  audiobooks directory.
-- **Store configuration in a file.** I shouldn't have to provide my
-  activation bytes every time.
-- **Write cover image to opus.** ffmpeg's libopus module doesn't do
-  this so we should do it automatically.
-- **Make opus metadata more audiobook like.** Why does everyone assume
-  audio files contain music -_-?
-- **Implement login.** The cookies should last a few months, but
-  manually inspect-elementing them into a json file is really
-  tedious.
-- **Clean up scraper.go** We're storing a lot of information we're not
-  using.
-- **Speed up near/far diff function** Iterating over slices to select
-  the ones we need to download is horrifically slow. Perhaps the
-  scraper should return a hash table instead of a []Book?
+  audiobooks directory and -a to convert a single book.
+- **Clean up scraper.go** The Book struct stores a lot of information
+  we're not using.
 - **Automatically get activations bytes.**
-- **Support multiple accounts.**
