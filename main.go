@@ -27,13 +27,15 @@ type ADLData struct {
 	Bytes string
 	// Cookies, so that we can scrape your personal library
 	Cookies []*http.Cookie
+	// Directory to cache downloaded files in
+	Cache string
 }
 
 // Convert the aax file corresponding to the book argument into a DRM-free
 // m4b file using the decryption key passed in cfg.Bytes.
 func convertAAXToM4B(b *Book, cfg *ADLData) error {
-	in := ".audible-dl-downloading/" + b.FileName + ".aax"
-	out := ".audible-dl-converting/" + b.FileName + ".m4b"
+	in := cfg.Cache + b.FileName + ".aax"
+	out := cfg.Cache + b.FileName + ".m4b"
 
 	cmd := exec.Command("ffmpeg",
 		"-activation_bytes", cfg.Bytes,
@@ -58,9 +60,9 @@ func convertAAXToM4B(b *Book, cfg *ADLData) error {
 }
 
 // Download the audiobook passed as an argument, saving it as an aax file
-// in the .audible-dl-downloading directory.
-func downloadSingleBook(b *Book) error {
-	aax := ".audible-dl-downloading/" + b.FileName + ".aax"
+// in the cache directory
+func downloadSingleBook(b *Book, cfg *ADLData) error {
+	aax := cfg.Cache + b.FileName + ".aax"
 
 	// Append .part to differentiate partially downloaded files
 	out, err := os.Create(aax + ".part")
@@ -207,16 +209,13 @@ func main() {
 		}
 	}
 
-	// Create data files to store partially downloaded and converted
-	// audiobook files.
-
-	if err := os.Mkdir(".audible-dl-downloading", 0755); err != nil {
-		if !os.IsExist(err) {
-			log.Fatal(err)
-		}
+	// Create cache dir to store partially downloaded audiobook files.
+	usercache, err := os.UserCacheDir()
+	if err != nil {
+		log.Fatal(err)
 	}
-
-	if err := os.Mkdir(".audible-dl-converting", 0755); err != nil {
+	cfg.Cache = usercache + "/audible-dl/"
+	if err := os.Mkdir(cfg.Cache, 0755); err != nil {
 		if !os.IsExist(err) {
 			log.Fatal(err)
 		}
@@ -237,7 +236,7 @@ func main() {
 			if os.IsNotExist(err) {
 				// Download and convert the book
 				fmt.Println("Downloading", b.Title)
-				if err := downloadSingleBook(&b); err != nil {
+				if err := downloadSingleBook(&b, &cfg); err != nil {
 					log.Fatal(err)
 				}
 				if err := convertAAXToM4B(&b, &cfg); err != nil {
@@ -245,17 +244,5 @@ func main() {
 				}
 			}
 		}
-	}
-
-	// By now we should have downloaded and converted all the audiobooks
-	// not present in the current directory, so we can safely remove the
-	// cache directories.
-
-	if err := os.Remove(".audible-dl-downloading"); err != nil {
-		log.Fatal(err)
-	}
-
-	if err := os.Remove(".audible-dl-converting"); err != nil {
-		log.Fatal(err)
 	}
 }
