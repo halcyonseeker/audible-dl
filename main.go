@@ -227,7 +227,19 @@ func main() {
 
 	books, err := RetrieveBooksListing(&cfg)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Printf("We received the following error while scrapping " +
+			"your library:\n\n\t%s\n\nThis could mean:\n" +
+			" 1. Your computer isn't connected to the internet.\n" +
+			" 2. Your cached Audible cookies have expired.  If " +
+			"you think that this might\n" +
+			"    be the case, get a new HAR file and try " +
+			"re-importing them with:\n\n" +
+			"\t audible-dl -i [file.har]\n\n" +
+			" 3. If the previous step fails then Audible " +
+			"probably changed the structure\n" +
+			"    of their website; please email a report to " +
+			"~thalia/audible-dl@lists.sr.ht\n", err)
+		os.Exit(1)
 	}
 
 	for i := 0; i < 3; i++ {
