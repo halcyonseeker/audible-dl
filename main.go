@@ -191,13 +191,14 @@ func main() {
 	}
 
 	// Handle command-line arguments used to build the data file.  Cookies
-	// might expire so we process them regaurdless of the its presence.
+	// might expire so we process them regardless of the its presence.
 
 	if bytes != "" {
 		cfg.Bytes = bytes
 		if err := writeDataFile(&cfg); err != nil {
 			log.Fatal(err)
 		}
+		fmt.Printf("\033[1m Set Activation Bytes to \033[m %s\n", bytes)
 	}
 
 	if harpath != "" {
@@ -207,6 +208,7 @@ func main() {
 		if err := writeDataFile(&cfg); err != nil {
 			log.Fatal(err)
 		}
+		fmt.Printf("\033[1mImported Cookies From\033[m %s\n", harpath)
 	}
 
 	// Create cache dir to store partially downloaded audiobook files.
