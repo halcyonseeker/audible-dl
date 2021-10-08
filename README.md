@@ -7,7 +7,7 @@ several days to download everything.**
 
 Audible-dl is an archiving tool that keeps an up-to-date, offline,
 archive of the audiobooks you've purchased with Audible as DRM-free,
-metadata rich, opus files.
+metadata rich, m4b files.
 
 It is intended for individuals who wish to effortlessly maintain an
 offline store of their Audiobooks to browse and listen to on their own
