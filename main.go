@@ -80,11 +80,11 @@ func downloadSingleBook(b *Book, cfg *ADLData) error {
 		}
 	}
 
-	bytes, err := io.Copy(out, resp.Body)
+	nbytes, err := io.Copy(out, resp.Body)
 	if err != nil {
 		return err
 	} else {
-		if bytes != resp.ContentLength {
+		if nbytes != resp.ContentLength {
 			return errors.New("Failed to write file to disk")
 		}
 	}
@@ -167,16 +167,16 @@ func writeDataFile(cfg *ADLData) error {
 
 func main() {
 	var cfg ADLData
-	var bytes, harpath string
+	var abytes, harpath string
 
-	flag.StringVar(&bytes, "b", "", "Your Audible activation bytes.")
+	flag.StringVar(&abytes, "b", "", "Your Audible activation bytes.")
 	flag.StringVar(&harpath, "i", "", "Import a HAR file.")
 	flag.Parse()
 
 	// Read required information from the data file.  If it isn't present,
 	// tell the user how to create it.
 	if err := readDataFile(&cfg); err != nil {
-		if os.IsNotExist(err) && (bytes == "" || harpath == "") {
+		if os.IsNotExist(err) && (abytes == "" || harpath == "") {
 			fmt.Printf("Data file is not present.  Please cd to " +
 				"your audibooks directory or\n" +
 				"initialise an archive here by running:\n\n" +
@@ -193,12 +193,12 @@ func main() {
 	// Handle command-line arguments used to build the data file.  Cookies
 	// might expire so we process them regardless of the its presence.
 
-	if bytes != "" {
-		cfg.Bytes = bytes
+	if abytes != "" {
+		cfg.Bytes = abytes
 		if err := writeDataFile(&cfg); err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf("\033[1m Set Activation Bytes to \033[m %s\n", bytes)
+		fmt.Printf("\033[1m Set Activation Bytes to\033[m %s\n", abytes)
 	}
 
 	if harpath != "" {
