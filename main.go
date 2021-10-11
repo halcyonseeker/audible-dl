@@ -254,18 +254,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	for i := 0; i < 3; i++ {
-		b := books[i]
+	// Download and convert the books
+	for _, b := range books {
 		if _, err := os.Stat(b.FileName + ".m4b"); err != nil {
 			if os.IsNotExist(err) {
-				// Download and convert the book
-				fmt.Println("Downloading", b.Title)
+				fmt.Printf("\033[1mDownloading\033[m %s...", b.Title)
 				if err := downloadSingleBook(&b, &cfg); err != nil {
+					fmt.Printf("\n")
 					log.Fatal(err)
 				}
+				fmt.Printf("ok\n")
+				fmt.Printf("\033[1mConverting\033[m %s...", b.Title)
 				if err := convertAAXToM4B(&b, &cfg); err != nil {
+					fmt.Printf("\n")
 					log.Fatal(err)
 				}
+				fmt.Printf("ok\n")
 			}
 		}
 	}
