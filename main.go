@@ -7,17 +7,17 @@
 package main
 
 import (
-	"io"
-	"os"
-	"log"
-	"fmt"
-	"flag"
-	"errors"
-	"strings"
-	"os/exec"
-	"net/http"
-	"io/ioutil"
 	"encoding/json"
+	"errors"
+	"flag"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"os"
+	"os/exec"
+	"strings"
 )
 
 const noDataFileError string =
@@ -76,7 +76,7 @@ func convertAAXToM4B(b *Book, cfg *ADLData) error {
 
 	// Move the now fully converted m4b file out of the temp dir and
 	// remove the aax file
-	if err := os.Rename(out, b.FileName + ".m4b"); err != nil {
+	if err := os.Rename(out, b.FileName+".m4b"); err != nil {
 		return err
 	}
 	if err := os.Remove(in); err != nil {
@@ -117,7 +117,7 @@ func downloadSingleBook(b *Book, cfg *ADLData) error {
 	}
 
 	// Rename the file now that it has been fully downloaded
-	if err := os.Rename(aax + ".part", aax); err != nil {
+	if err := os.Rename(aax+".part", aax); err != nil {
 		return err
 	}
 
@@ -156,7 +156,7 @@ func importCookiesFromHAR(path string, cfg *ADLData) error {
 			continue
 		}
 		cfg.Cookies = append(cfg.Cookies, &http.Cookie{
-			Name: c.(map[string]interface{})["name"].(string),
+			Name:  c.(map[string]interface{})["name"].(string),
 			Value: value,
 		})
 	}

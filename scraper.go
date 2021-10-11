@@ -294,8 +294,8 @@ func RetrieveBooksListing(cfg *ADLData) ([]Book, error) {
 					book := xSingleBook(dom, tt, tok)
 					if book.Slug == firstinprevpage {
 						// We've reached a duplicate page
-						fmt.Printf("\x1b[2k\r" +
-							"\033[1mScraped Page\033[m" +
+						fmt.Printf("\x1b[2k\r"+
+							"\033[1mScraped Page\033[m"+
 							" %d/%d\n", i, i)
 						return books, nil
 					}
