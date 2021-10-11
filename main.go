@@ -20,6 +20,33 @@ import (
 	"encoding/json"
 )
 
+const noDataFileError string =
+`Data file is not present.  Please cd to your audibooks directory or
+initialise an archive here by running:
+
+	audible-dl -b [bytes] -i [file.har]
+
+For more information or to report a bug, see the project website:
+	https://sr.ht/~thalia/audible-dl
+`
+
+const scraperFailedError string =
+`We received the following error while scrapping your library:
+
+	%s
+
+This could mean:
+1. Your computer isn't connected to the internet.
+2. Your cached Audible cookies have expired.  If you think that this might
+   be the case, get a new HAR file and try re-importing them with:
+
+	audible-dl -i [file.har]
+
+3. If the previous step fails then Audible probably changed the structure
+   of their website; see the file .audible-dl-debug.html and please email a
+   report to ~thalia/audible-dl@lists.sr.ht
+`
+
 // An instance of this holds configuration data read from command-line
 // arguments and the ./.audible-dl.json file.
 type ADLData struct {
@@ -177,13 +204,7 @@ func main() {
 	// tell the user how to create it.
 	if err := readDataFile(&cfg); err != nil {
 		if os.IsNotExist(err) && (abytes == "" || harpath == "") {
-			fmt.Printf("Data file is not present.  Please cd to " +
-				"your audibooks directory or\n" +
-				"initialise an archive here by running:\n\n" +
-				"\t audible-dl -b [bytes] -i [file.har]\n\n" +
-				"For more information or to report a bug, " +
-				"see the project website:\n" +
-				"\thttps://sr.ht/~thalia/audible-dl\n")
+			fmt.Printf(noDataFileError)
 			os.Exit(0)
 		} else if !os.IsNotExist(err) {
 			log.Fatal(err)
@@ -229,19 +250,7 @@ func main() {
 
 	books, err := RetrieveBooksListing(&cfg)
 	if err != nil {
-		fmt.Printf("We received the following error while scrapping " +
-			"your library:\n\n\t%s\n\nThis could mean:\n" +
-			" 1. Your computer isn't connected to the internet.\n" +
-			" 2. Your cached Audible cookies have expired.  If " +
-			"you think that this might\n" +
-			"    be the case, get a new HAR file and try " +
-			"re-importing them with:\n\n" +
-			"\t audible-dl -i [file.har]\n\n" +
-			" 3. If the previous step fails then Audible " +
-			"probably changed the structure\n" +
-			"    of their website; see the file " +
-			".audible-dl-debug.html and please email a\n" +
-			"    report to ~thalia/audible-dl@lists.sr.ht\n", err)
+		fmt.Printf(scraperFailedError, err)
 		os.Exit(1)
 	}
 
