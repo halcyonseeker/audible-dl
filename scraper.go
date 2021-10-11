@@ -326,9 +326,11 @@ func RetrieveBooksListing(cfg *ADLData) ([]Book, error) {
 
 		// If we didn't extract any books from the first page then
 		// we probably won't extract any from the next, so we should
-		// just break and return an error
+		// just break and return an error, saving the page source in
+		// a file along with debugging information
 		if len(books) == 0 {
 			fmt.Printf("\n")
+			ioutil.WriteFile(".audible-dl-debug.html", raw, 0644)
 			return nil, errors.New("Failed to extract books from HTML")
 		}
 	}

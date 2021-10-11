@@ -239,8 +239,9 @@ func main() {
 			"\t audible-dl -i [file.har]\n\n" +
 			" 3. If the previous step fails then Audible " +
 			"probably changed the structure\n" +
-			"    of their website; please email a report to " +
-			"~thalia/audible-dl@lists.sr.ht\n", err)
+			"    of their website; see the file " +
+			".audible-dl-debug.html and please email a\n" +
+			"    report to ~thalia/audible-dl@lists.sr.ht\n", err)
 		os.Exit(1)
 	}
 
