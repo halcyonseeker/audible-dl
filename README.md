@@ -46,6 +46,12 @@ This will cache your authentication cookies and activation bytes in
 the file `.audible-dl.json`.  If the cookies ever expire you can renew
 them by running `audible-dl -i [path/to/new/request.har]`.
 
+Known Bugs
+----------
+- For longer audiobooks that offer multi-file downloads the scraper
+  only picks up the URL for the final part.  We should be download the
+  *full* book every time.
+
 TODO
 ----
 - **Concurrently download and convert books.** We've been doing this
@@ -53,7 +59,7 @@ TODO
   have to re-work the status outputs to work with concurrent downloads
   and conversions
 - **Add command-line options.** Stuff like -d to specify a different
-  audiobooks directory and -a to convert a single book.
+  audiobooks directory.
 - **Clean up scraper.go** The Book struct stores a lot of information
   we're not using.
 - **Automatically get activations bytes.**
