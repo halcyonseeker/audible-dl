@@ -60,9 +60,9 @@ type ADLData struct {
 
 // Convert the aax file corresponding to the book argument into a DRM-free
 // m4b file using the decryption key passed in cfg.Bytes.
-func convertAAXToM4B(b *Book, cfg *ADLData) error {
-	in := cfg.Cache + b.FileName + ".aax"
-	out := cfg.Cache + b.FileName + ".m4b"
+func convertAAXToM4B(filename string, cfg *ADLData) error {
+	in := cfg.Cache + filename + ".aax"
+	out := cfg.Cache + filename + ".m4b"
 
 	cmd := exec.Command("ffmpeg",
 		"-activation_bytes", cfg.Bytes,
@@ -76,7 +76,7 @@ func convertAAXToM4B(b *Book, cfg *ADLData) error {
 
 	// Move the now fully converted m4b file out of the temp dir and
 	// remove the aax file
-	if err := os.Rename(out, b.FileName+".m4b"); err != nil {
+	if err := os.Rename(out, filename+".m4b"); err != nil {
 		return err
 	}
 	if err := os.Remove(in); err != nil {
@@ -194,10 +194,11 @@ func writeDataFile(cfg *ADLData) error {
 
 func main() {
 	var cfg ADLData
-	var abytes, harpath string
+	var abytes, harpath, aaxpath string
 
 	flag.StringVar(&abytes, "b", "", "Your Audible activation bytes.")
 	flag.StringVar(&harpath, "i", "", "Import a HAR file.")
+	flag.StringVar(&aaxpath, "a", "", "Convert a single AAX file.")
 	flag.Parse()
 
 	// Read required information from the data file.  If it isn't present,
@@ -230,6 +231,22 @@ func main() {
 			log.Fatal(err)
 		}
 		fmt.Printf("\033[1mImported Cookies From\033[m %s\n", harpath)
+	}
+
+	// If -a file.aax was specified just convert the file and exit
+	if aaxpath != "" {
+		// By default AAX files are saved with names like Title_ep6.aax
+		filename := aaxpath[:len(aaxpath)-8]
+		if err := os.Rename(aaxpath, filename + ".aax"); err != nil {
+			log.Fatal(err)
+		}
+		fmt.Printf("\033[1mConverting\033[m %s...", filename)
+		if err := convertAAXToM4B(filename, &cfg); err != nil {
+			fmt.Printf("\n")
+			log.Fatal(err)
+		}
+		fmt.Printf("ok\n")
+		os.Exit(0)
 	}
 
 	// Create cache dir to store partially downloaded audiobook files.
@@ -265,7 +282,7 @@ func main() {
 				}
 				fmt.Printf("ok\n")
 				fmt.Printf("\033[1mConverting\033[m %s...", b.Title)
-				if err := convertAAXToM4B(&b, &cfg); err != nil {
+				if err := convertAAXToM4B(b.FileName, &cfg); err != nil {
 					fmt.Printf("\n")
 					log.Fatal(err)
 				}
