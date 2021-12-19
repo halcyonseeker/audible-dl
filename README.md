@@ -48,9 +48,7 @@ them by running `audible-dl -i [path/to/new/request.har]`.
 
 Known Bugs
 ----------
-- For longer audiobooks that offer multi-file downloads the scraper
-  only picks up the URL for the final part.  We should be download the
-  *full* book every time.
+- Probably
 
 TODO
 ----
