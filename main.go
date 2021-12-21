@@ -257,6 +257,10 @@ func main() {
 	for _, b := range books {
 		if _, err := os.Stat(b.FileName + ".m4b"); err != nil {
 			if os.IsNotExist(err) {
+				if b.DownloadURL == "" {
+					fmt.Printf("\033[1mNo URL for\033[m %s...\n", b.Title)
+					continue
+				}
 				fmt.Printf("\033[1mDownloading\033[m %s...", b.Title)
 				if err := downloadSingleBook(&b, &cfg); err != nil {
 					fmt.Printf("\n")
