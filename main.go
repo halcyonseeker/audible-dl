@@ -11,6 +11,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"git.sr.ht/~thalia/audible-dl/audibledl"
 	"io"
 	"io/ioutil"
 	"log"
@@ -47,20 +48,9 @@ This could mean:
    report to ~thalia/audible-dl@lists.sr.ht
 `
 
-// An instance of this holds configuration data read from command-line
-// arguments and the ./.audible-dl.json file.
-type ADLData struct {
-	// Activation bytes, required to decrypt the audiobooks
-	Bytes string
-	// Cookies, so that we can scrape your personal library
-	Cookies []*http.Cookie
-	// Directory to cache downloaded files in
-	Cache string
-}
-
 // Convert the aax file corresponding to the book argument into a DRM-free
 // m4b file using the decryption key passed in cfg.Bytes.
-func convertAAXToM4B(filename string, cfg *ADLData) error {
+func convertAAXToM4B(filename string, cfg *audibledl.Client) error {
 	in := cfg.Cache + filename + ".aax"
 	out := cfg.Cache + filename + ".m4b"
 
@@ -88,7 +78,7 @@ func convertAAXToM4B(filename string, cfg *ADLData) error {
 
 // Download the audiobook passed as an argument, saving it as an aax file
 // in the cache directory
-func downloadSingleBook(b *Book, cfg *ADLData) error {
+func downloadSingleBook(b *audibledl.Book, cfg *audibledl.Client) error {
 	aax := cfg.Cache + b.FileName + ".aax"
 
 	// Append .part to differentiate partially downloaded files
@@ -130,7 +120,7 @@ func downloadSingleBook(b *Book, cfg *ADLData) error {
 // request to audible.com/library/titles while signed in.  The HAR file
 // should be passed with the -i flag on first run; subsequent runs quietly
 // read cookies from ./.audible-dl.json.
-func importCookiesFromHAR(path string, cfg *ADLData) error {
+func importCookiesFromHAR(path string, cfg *audibledl.Client) error {
 	var har map[string]interface{}
 
 	raw, err := ioutil.ReadFile(path)
@@ -167,7 +157,7 @@ func importCookiesFromHAR(path string, cfg *ADLData) error {
 // Read the contents of ./.audible-dl.json into an ADLData struct.  This
 // file is used to persistently store essential program information like
 // authentication cookies and activation bytes.
-func readDataFile(cfg *ADLData) error {
+func readDataFile(cfg *audibledl.Client) error {
 	raw, err := ioutil.ReadFile(".audible-dl.json")
 	if err != nil {
 		return err
@@ -183,7 +173,7 @@ func readDataFile(cfg *ADLData) error {
 // Write an ADLData struct to ./.audible-dl.json.  This should probably
 // only be done when the user first runs this program with the -i and -b
 // flags. Subsequent runs should just read the required data from the file.
-func writeDataFile(cfg *ADLData) error {
+func writeDataFile(cfg *audibledl.Client) error {
 	json, _ := json.MarshalIndent(cfg, "", "  ")
 	if err := ioutil.WriteFile(".audible-dl.json", json, 0644); err != nil {
 		return err
@@ -193,7 +183,7 @@ func writeDataFile(cfg *ADLData) error {
 }
 
 func main() {
-	var cfg ADLData
+	var cfg audibledl.Client
 	var abytes, harpath, aaxpath string
 
 	flag.StringVar(&abytes, "b", "", "Your Audible activation bytes.")
@@ -265,7 +255,7 @@ func main() {
 	// download and convert the ones that don't appear to be present in
 	// the current working directory.
 
-	books, err := RetrieveBooksListing(&cfg)
+	books, err := cfg.RetrieveBooksListing()
 	if err != nil {
 		fmt.Printf(scraperFailedError, err)
 		os.Exit(1)
