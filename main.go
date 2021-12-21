@@ -21,9 +21,7 @@ import (
 	"strings"
 )
 
-const noDataFileError string =
-`Data file is not present.  Please cd to your audibooks directory or
-initialise an archive here by running:
+const noDataFileError string = `Data file is not present.  Create it by running:
 
 	audible-dl -b [bytes] -i [file.har]
 
@@ -31,8 +29,7 @@ For more information or to report a bug, see the project website:
 	https://sr.ht/~thalia/audible-dl
 `
 
-const scraperFailedError string =
-`We received the following error while scrapping your library:
+const scraperFailedError string = `Received this error scrapping your library:
 
 	%s
 
@@ -132,12 +129,7 @@ func importCookiesFromHAR(path string, cfg *audibledl.Client) error {
 		return err
 	}
 
-	cookies := har["log"].
-		(map[string]interface{})["entries"].
-		([]interface{})[0].
-		(map[string]interface{})["request"].
-		(map[string]interface{})["cookies"].
-		([]interface{})
+	cookies := har["log"].(map[string]interface{})["entries"].([]interface{})[0].(map[string]interface{})["request"].(map[string]interface{})["cookies"].([]interface{})
 	for _, c := range cookies {
 		value := c.(map[string]interface{})["value"].(string)
 		// The values of some non-essential cookies contain a double
@@ -227,7 +219,7 @@ func main() {
 	if aaxpath != "" {
 		// By default AAX files are saved with names like Title_ep6.aax
 		filename := aaxpath[:len(aaxpath)-8]
-		if err := os.Rename(aaxpath, filename + ".aax"); err != nil {
+		if err := os.Rename(aaxpath, filename+".aax"); err != nil {
 			log.Fatal(err)
 		}
 		fmt.Printf("\033[1mConverting\033[m %s...", filename)
