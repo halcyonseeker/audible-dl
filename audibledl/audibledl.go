@@ -2,7 +2,7 @@
 // Scrape an audible library
 //
 
-package main
+package audibledl
 
 import (
 	"bytes"
@@ -17,6 +17,14 @@ import (
 	"strconv"
 	"strings"
 )
+
+// This central object holds everything we need to scrape the library
+// and convert books
+type Client struct {
+	Bytes   string
+	Cookies []*http.Cookie
+	Cache   string
+}
 
 // Each book is stored in one of these
 type Book struct {
@@ -241,7 +249,7 @@ func xSingleBook(dom *html.Tokenizer, tt html.TokenType, tok html.Token) Book {
 }
 
 // Download a HTMl page in the user's library
-func getLibraryPage(page int, cfg *ADLData) ([]byte, error) {
+func (cfg *Client) getLibraryPage(page int) ([]byte, error) {
 	jar, _ := cookiejar.New(nil)
 	client := &http.Client{Jar: jar}
 	uri := "https://www.audible.com/library/titles?page=" + strconv.Itoa(page)
@@ -264,7 +272,7 @@ func getLibraryPage(page int, cfg *ADLData) ([]byte, error) {
 }
 
 // Get a slice of structs containing info about all the books in my library
-func RetrieveBooksListing(cfg *ADLData) ([]Book, error) {
+func (cfg *Client) RetrieveBooksListing() ([]Book, error) {
 	var books []Book
 
 	// audible.com/library/titles?page=N doesn't return a 404 when
@@ -277,7 +285,7 @@ func RetrieveBooksListing(cfg *ADLData) ([]Book, error) {
 	for i := 1; ; i++ {
 		fmt.Printf("\x1b[2k\r")
 		fmt.Printf("\033[1mScraping Page\033[m %d", i)
-		raw, err := getLibraryPage(i, cfg)
+		raw, err := cfg.getLibraryPage(i)
 		if err != nil {
 			fmt.Printf("\n")
 			return nil, err
