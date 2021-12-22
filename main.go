@@ -146,6 +146,14 @@ func importCookiesFromHAR(path string, cfg *audibledl.Client) error {
 	return nil
 }
 
+// Helper function to reduce the nesting in main
+func fileExists(fn string) bool {
+	if _, err := os.Stat(fn); err != nil {
+		return !os.IsNotExist(err)
+	}
+	return true
+}
+
 // Read the contents of ./.audible-dl.json into an ADLData struct.  This
 // file is used to persistently store essential program information like
 // authentication cookies and activation bytes.
@@ -255,25 +263,23 @@ func main() {
 
 	// Download and convert the books
 	for _, b := range books {
-		if _, err := os.Stat(b.FileName + ".m4b"); err != nil {
-			if os.IsNotExist(err) {
-				if b.DownloadURL == "" {
-					fmt.Printf("\033[1mNo URL for\033[m %s...\n", b.Title)
-					continue
-				}
-				fmt.Printf("\033[1mDownloading\033[m %s...", b.Title)
-				if err := downloadSingleBook(&b, &cfg); err != nil {
-					fmt.Printf("\n")
-					log.Fatal(err)
-				}
-				fmt.Printf("ok\n")
-				fmt.Printf("\033[1mConverting\033[m %s...", b.Title)
-				if err := convertAAXToM4B(b.FileName, &cfg); err != nil {
-					fmt.Printf("\n")
-					log.Fatal(err)
-				}
-				fmt.Printf("ok\n")
+		if !fileExists(b.FileName + ".m4b") {
+			if b.DownloadURL == "" {
+				fmt.Printf("\033[1mNo URL for\033[m %s...\n", b.Title)
+				continue
 			}
+			fmt.Printf("\033[1mDownloading\033[m %s...", b.Title)
+			if err := downloadSingleBook(&b, &cfg); err != nil {
+				fmt.Printf("\n")
+				log.Fatal(err)
+			}
+			fmt.Printf("ok\n")
+			fmt.Printf("\033[1mConverting\033[m %s...", b.Title)
+			if err := convertAAXToM4B(b.FileName, &cfg); err != nil {
+				fmt.Printf("\n")
+				log.Fatal(err)
+			}
+			fmt.Printf("ok\n")
 		}
 	}
 }
