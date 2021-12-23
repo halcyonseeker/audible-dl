@@ -265,7 +265,7 @@ func main() {
 	for _, b := range books {
 		if !fileExists(b.FileName + ".m4b") {
 			if b.DownloadURL == "" {
-				fmt.Printf("\033[1mNo URL for\033[m %s...\n", b.Title)
+				fmt.Printf("\033[1mNo URL for\033[m %s\n", b.Title)
 				continue
 			}
 			fmt.Printf("\033[1mDownloading\033[m %s...", b.Title)
