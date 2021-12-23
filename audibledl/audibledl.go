@@ -44,7 +44,8 @@ type Book struct {
 
 // Remove whitespace and other shell reserve characters from S
 func stripstr(s string) string {
-	r := regexp.MustCompile(`\s|\\|\(|\)|\[|\]|\*`)
+	r := regexp.MustCompile(
+		`\s|\\|\(|\)|\[|\]|\{|\}|\*|\?|\!|\+|\,|\;|\&|\||\'|\"|‘`)
 	s = r.ReplaceAllString(s, "")
 
 	return s
