@@ -272,8 +272,14 @@ func (cfg *Client) getLibraryPage(page int) ([]byte, error) {
 	return html, nil
 }
 
+// Determine if the current html token contains a book
+func tokBeginsBook(tt html.TokenType, tok html.Token) bool {
+	return tt == html.StartTagToken &&
+		class(tok) == "adbl-library-content-row"
+}
+
 // Get a slice of structs containing info about all the books in my library
-func (cfg *Client) RetrieveBooksListing() ([]Book, error) {
+func (c *Client) RetrieveBooksListing(lim string) ([]Book, error) {
 	var books []Book
 
 	// audible.com/library/titles?page=N doesn't return a 404 when
@@ -286,7 +292,7 @@ func (cfg *Client) RetrieveBooksListing() ([]Book, error) {
 	for i := 1; ; i++ {
 		fmt.Printf("\x1b[2k\r")
 		fmt.Printf("\033[1mScraping Page\033[m %d", i)
-		raw, err := cfg.getLibraryPage(i)
+		raw, err := c.getLibraryPage(i)
 		if err != nil {
 			fmt.Printf("\n")
 			return nil, err
@@ -296,37 +302,31 @@ func (cfg *Client) RetrieveBooksListing() ([]Book, error) {
 
 		for {
 			tt := dom.Next()
-			if tt == html.StartTagToken {
-				tok := dom.Token()
-
+			tok := dom.Token()
+			if tokBeginsBook(tt, tok) {
 				// If we find a book, extract it
-				if class(tok) == "adbl-library-content-row" {
-					book := xSingleBook(dom, tt, tok)
-					if book.Slug == firstinprevpage {
-						// We've reached a duplicate page
-						fmt.Printf("\x1b[2k\r"+
-							"\033[1mScraped Page\033[m"+
-							" %d/%d\n", i, i)
-						return books, nil
-					}
-					books = append(books, book)
-					if firstincurrpage == "" {
-						// Save the first book in the page
-						firstincurrpage = book.Slug
-					}
-					if firstinprevpage == "" {
-						// This is the first page
-						firstinprevpage = book.Slug
-					}
-					continue
+				book := xSingleBook(dom, tt, tok)
+				if book.Slug == firstinprevpage {
+					// We've reached a duplicate page
+					fmt.Printf("\x1b[2k\r"+
+						"\033[1mScraped Page\033[m"+
+						" %d/%d\n", i, i)
+					return books, nil
 				}
-
-				// If it looks like we're getting to the end, break
-				if id(tok) == "center-6" {
-					break
+				books = append(boks, book)
+				if firstincurrpage == "" {
+					// Save the first book in the page
+					firstincurrpage = book.Slug
 				}
+				if firstinprevpage == "" {
+					// This is the first page
+					firstinprevpage = book.Slug
+				}
+				continue
+			}
 
-			} else if tt == html.ErrorToken { // EOF
+			// exit inner loop when we reach the end end
+			if id(tok) == "center-6" || tt == html.ErrorToken {
 				break
 			}
 		}
