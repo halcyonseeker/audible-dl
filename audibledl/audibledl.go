@@ -278,8 +278,11 @@ func tokBeginsBook(tt html.TokenType, tok html.Token) bool {
 		class(tok) == "adbl-library-content-row"
 }
 
-// Get a slice of structs containing info about all the books in my library
-func (c *Client) RetrieveBooksListing(lim string) ([]Book, error) {
+// Scrape the library until we encounter a book whose filename
+// (display title ran through stripstr) matches lim, returning a slice
+// of books.  If lim is an empty string this behaves exactly like
+// ScrapeFullLibrary().
+func (c *Client) ScrapeLibraryUntil(lim string) ([]Book, error) {
 	var books []Book
 
 	// audible.com/library/titles?page=N doesn't return a 404 when
@@ -313,7 +316,11 @@ func (c *Client) RetrieveBooksListing(lim string) ([]Book, error) {
 						" %d/%d\n", i, i)
 					return books, nil
 				}
-				books = append(boks, book)
+				if book.Filename == lim && lim != "" {
+					// We've reached the final book
+					return books, nil
+				}
+				books = append(books, book)
 				if firstincurrpage == "" {
 					// Save the first book in the page
 					firstincurrpage = book.Slug
@@ -344,4 +351,9 @@ func (c *Client) RetrieveBooksListing(lim string) ([]Book, error) {
 			return nil, errors.New("Failed to extract books from HTML")
 		}
 	}
+}
+
+// Scrape the entire library until, returning a slice of books.
+func (c *Client) ScrapeFullLibrary() ([]Book, error) {
+	return c.ScrapeLibraryUntil("")
 }
