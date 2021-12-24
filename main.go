@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
 )
 
 const noDataFileError string = `Data file is not present.  Create it by running:
@@ -255,7 +256,20 @@ func main() {
 	// download and convert the ones that don't appear to be present in
 	// the current working directory.
 
-	books, err := cfg.RetrieveBooksListing()
+	ch := make(chan int)
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var t int
+		for i := range ch {
+			t = i
+			fmt.Printf("\x1b[2k\r\033[1mScraping Page\033[m %d", i)
+		}
+		fmt.Printf("\x1b[2k\r\033[1mScraped Page\033[m %d/%d\n", t, t)
+	}()
+	books, err := cfg.ScrapeFullLibrary(ch)
+	wg.Wait()
 	if err != nil {
 		fmt.Printf(scraperFailedError, err)
 		os.Exit(1)
