@@ -7,7 +7,6 @@ package audibledl
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"golang.org/x/net/html"
 	"io/ioutil"
 	"net/http"
@@ -282,8 +281,10 @@ func tokBeginsBook(tt html.TokenType, tok html.Token) bool {
 // (display title ran through stripstr) matches lim, returning a slice
 // of books.  If lim is an empty string this behaves exactly like
 // ScrapeFullLibrary().
-func (c *Client) ScrapeLibraryUntil(lim string) ([]Book, error) {
+func (c *Client) ScrapeLibraryUntil(pagen chan int, lim string) ([]Book, error) {
 	var books []Book
+
+	defer close(pagen)
 
 	// audible.com/library/titles?page=N doesn't return a 404 when
 	// we access pages that don't exist, so we'll store the slug of
@@ -293,11 +294,9 @@ func (c *Client) ScrapeLibraryUntil(lim string) ([]Book, error) {
 	var firstinprevpage string = ""
 
 	for i := 1; ; i++ {
-		fmt.Printf("\x1b[2k\r")
-		fmt.Printf("\033[1mScraping Page\033[m %d", i)
+		pagen <- i
 		raw, err := c.getLibraryPage(i)
 		if err != nil {
-			fmt.Printf("\n")
 			return nil, err
 		}
 
@@ -311,12 +310,9 @@ func (c *Client) ScrapeLibraryUntil(lim string) ([]Book, error) {
 				book := xSingleBook(dom, tt, tok)
 				if book.Slug == firstinprevpage {
 					// We've reached a duplicate page
-					fmt.Printf("\x1b[2k\r"+
-						"\033[1mScraped Page\033[m"+
-						" %d/%d\n", i, i)
 					return books, nil
 				}
-				if book.Filename == lim && lim != "" {
+				if book.FileName == lim && lim != "" {
 					// We've reached the final book
 					return books, nil
 				}
@@ -346,7 +342,6 @@ func (c *Client) ScrapeLibraryUntil(lim string) ([]Book, error) {
 		// just break and return an error, saving the page source in
 		// a file along with debugging information
 		if len(books) == 0 {
-			fmt.Printf("\n")
 			ioutil.WriteFile(".audible-dl-debug.html", raw, 0644)
 			return nil, errors.New("Failed to extract books from HTML")
 		}
@@ -354,6 +349,6 @@ func (c *Client) ScrapeLibraryUntil(lim string) ([]Book, error) {
 }
 
 // Scrape the entire library until, returning a slice of books.
-func (c *Client) ScrapeFullLibrary() ([]Book, error) {
-	return c.ScrapeLibraryUntil("")
+func (c *Client) ScrapeFullLibrary(pagen chan int) ([]Book, error) {
+	return c.ScrapeLibraryUntil(pagen, "")
 }
