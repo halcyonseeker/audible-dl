@@ -13,6 +13,8 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"os"
+	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
@@ -360,3 +362,23 @@ func (c *Client) InitFromJson(raw []byte) error {
 	return err
 }
 
+// Convert the aax file corresponding to the filenamee argument into a
+// DRM-free m4b file using the decryption key passed in c.Bytes.
+func (c *Client) Convert(filename string) error {
+	in := c.Cache + filename + ".aax"
+	out := c.Cache + filename + ".m4b"
+
+	cmd := exec.Command("ffmpeg",
+		"-activation_bytes", c.Bytes,
+		"-i", in,
+		"-c", "copy",
+		out)
+	cmd.Stdout = nil
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	// Move the now fully converted m4b file out of the temp dir and
+	// remove the aax file
+	return os.Rename(out, filename+".m4b")
+}
