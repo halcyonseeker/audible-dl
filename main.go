@@ -17,7 +17,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"strings"
 	"sync"
 )
@@ -45,34 +44,6 @@ This could mean:
    of their website; see the file .audible-dl-debug.html and please email a
    report to ~thalia/audible-dl@lists.sr.ht
 `
-
-// Convert the aax file corresponding to the book argument into a DRM-free
-// m4b file using the decryption key passed in cfg.Bytes.
-func convertAAXToM4B(filename string, cfg *audibledl.Client) error {
-	in := cfg.Cache + filename + ".aax"
-	out := cfg.Cache + filename + ".m4b"
-
-	cmd := exec.Command("ffmpeg",
-		"-activation_bytes", cfg.Bytes,
-		"-i", in,
-		"-c", "copy",
-		out)
-	cmd.Stdout = nil
-	if err := cmd.Run(); err != nil {
-		return err
-	}
-
-	// Move the now fully converted m4b file out of the temp dir and
-	// remove the aax file
-	if err := os.Rename(out, filename+".m4b"); err != nil {
-		return err
-	}
-	if err := os.Remove(in); err != nil {
-		return err
-	}
-
-	return nil
-}
 
 // Download the audiobook passed as an argument, saving it as an aax file
 // in the cache directory
@@ -275,11 +246,15 @@ func main() {
 			}
 			fmt.Printf("ok\n")
 			fmt.Printf("\033[1mConverting\033[m %s...", b.Title)
-			if err := convertAAXToM4B(b.FileName, &cfg); err != nil {
+			if err := cfg.Convert(b.FileName); err != nil {
 				fmt.Printf("\n")
 				log.Fatal(err)
 			}
 			fmt.Printf("ok\n")
+			err := os.Remove(cfg.Cache + b.FileName + ".aax")
+			if err != nil {
+				log.Fatal(err)
+			}
 		}
 	}
 }
