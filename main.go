@@ -17,7 +17,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 	"sync"
 )
 
@@ -78,41 +77,6 @@ func downloadSingleBook(b *audibledl.Book, cfg *audibledl.Client) error {
 	// Rename the file now that it has been fully downloaded
 	if err := os.Rename(aax+".part", aax); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-// Owing to the general complexity of Amazon's login process, it's a lot
-// easier to just import the cookies we need from a HAR file than it is to
-// fetch the information ourselves.  This file is created by sending a GET
-// request to audible.com/library/titles while signed in.  The HAR file
-// should be passed with the -i flag on first run; subsequent runs quietly
-// read cookies from ./.audible-dl.json.
-func importCookiesFromHAR(path string, cfg *audibledl.Client) error {
-	var har map[string]interface{}
-
-	raw, err := ioutil.ReadFile(path)
-	if err != nil {
-		return err
-	}
-
-	if err = json.Unmarshal(raw, &har); err != nil {
-		return err
-	}
-
-	cookies := har["log"].(map[string]interface{})["entries"].([]interface{})[0].(map[string]interface{})["request"].(map[string]interface{})["cookies"].([]interface{})
-	for _, c := range cookies {
-		value := c.(map[string]interface{})["value"].(string)
-		// The values of some non-essential cookies contain a double
-		// quote character which net/http really doesn't like
-		if strings.Contains(value, "\"") {
-			continue
-		}
-		cfg.Cookies = append(cfg.Cookies, &http.Cookie{
-			Name:  c.(map[string]interface{})["name"].(string),
-			Value: value,
-		})
 	}
 
 	return nil
@@ -190,7 +154,11 @@ func main() {
 	}
 
 	if harpath != "" {
-		if err := importCookiesFromHAR(harpath, &cfg); err != nil {
+		raw, err := ioutil.ReadFile(harpath)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if err := cfg.ImportCookiesFromHAR(raw); err != nil {
 			log.Fatal(err)
 		}
 		if err := writeDataFile(&cfg); err != nil {

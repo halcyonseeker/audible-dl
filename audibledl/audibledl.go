@@ -382,3 +382,30 @@ func (c *Client) Convert(filename string) error {
 	// remove the aax file
 	return os.Rename(out, filename+".m4b")
 }
+
+// Owing to the general complexity of Amazon's login process, it's a lot
+// easier to just import the cookies we need from a HAR file than it is to
+// fetch the information ourselves.  This file is created by sending a GET
+// request to audible.com/library/titles while signed in.
+func (c *Client) ImportCookiesFromHAR(raw []byte) error {
+	var har map[string]interface{}
+
+	if err := json.Unmarshal(raw, &har); err != nil {
+		return err
+	}
+
+	cookies := har["log"].(map[string]interface{})["entries"].([]interface{})[0].(map[string]interface{})["request"].(map[string]interface{})["cookies"].([]interface{})
+	for _, ck := range cookies {
+		value := ck.(map[string]interface{})["value"].(string)
+		// The values of some non-essential cookies contain a double
+		// quote character which net/http really doesn't like
+		if strings.Contains(value, "\"") {
+			continue
+		}
+		c.Cookies = append(c.Cookies, &http.Cookie{
+			Name:  ck.(map[string]interface{})["name"].(string),
+			Value: value,
+		})
+	}
+	return nil
+}
