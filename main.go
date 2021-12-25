@@ -160,8 +160,26 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Handle command-line arguments used to build the data file.  Cookies
-	// might expire so we process them regardless of the its presence.
+	// If we're only converting a single book just convert it and
+	// exit without writing to the data file
+	if aaxpath != "" {
+		if cfg.Bytes == "" && abytes == "" {
+			log.Fatal("Please pass activation bytes with -a.")
+		}
+		if cfg.Bytes == "" || abytes != "" {
+			cfg.Bytes = abytes
+		}
+		if aaxpath[len(aaxpath)-4:] == ".aax" {
+			aaxpath = aaxpath[:len(aaxpath)-4]
+		}
+		fmt.Printf("\033[1mConverting\033[m %s...", aaxpath)
+		if err := cfg.Convert(aaxpath); err != nil {
+			fmt.Printf("\n")
+			log.Fatal(err)
+		}
+		fmt.Printf("ok\n")
+		os.Exit(0)
+	}
 
 	if abytes != "" {
 		cfg.Bytes = abytes
@@ -179,22 +197,6 @@ func main() {
 			log.Fatal(err)
 		}
 		fmt.Printf("\033[1mImported Cookies From\033[m %s\n", harpath)
-	}
-
-	// If -a file.aax was specified just convert the file and exit
-	if aaxpath != "" {
-		// By default AAX files are saved with names like Title_ep6.aax
-		filename := aaxpath[:len(aaxpath)-8]
-		if err := os.Rename(aaxpath, filename+".aax"); err != nil {
-			log.Fatal(err)
-		}
-		fmt.Printf("\033[1mConverting\033[m %s...", filename)
-		if err := convertAAXToM4B(filename, &cfg); err != nil {
-			fmt.Printf("\n")
-			log.Fatal(err)
-		}
-		fmt.Printf("ok\n")
-		os.Exit(0)
 	}
 
 	// Create cache dir to store partially downloaded audiobook files.
