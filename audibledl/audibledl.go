@@ -6,6 +6,7 @@ package audibledl
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"golang.org/x/net/html"
 	"io/ioutil"
@@ -352,3 +353,10 @@ func (c *Client) ScrapeLibraryUntil(pagen chan int, lim string) ([]Book, error) 
 func (c *Client) ScrapeFullLibrary(pagen chan int) ([]Book, error) {
 	return c.ScrapeLibraryUntil(pagen, "")
 }
+
+// Populate the client from a json buffer
+func (c *Client) InitFromJson(raw []byte) error {
+	err := json.Unmarshal(raw, c)
+	return err
+}
+

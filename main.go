@@ -155,22 +155,6 @@ func fileExists(fn string) bool {
 	return true
 }
 
-// Read the contents of ./.audible-dl.json into an ADLData struct.  This
-// file is used to persistently store essential program information like
-// authentication cookies and activation bytes.
-func readDataFile(cfg *audibledl.Client) error {
-	raw, err := ioutil.ReadFile(".audible-dl.json")
-	if err != nil {
-		return err
-	}
-
-	if err = json.Unmarshal(raw, &cfg); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 // Write an ADLData struct to ./.audible-dl.json.  This should probably
 // only be done when the user first runs this program with the -i and -b
 // flags. Subsequent runs should just read the required data from the file.
@@ -192,15 +176,17 @@ func main() {
 	flag.StringVar(&aaxpath, "a", "", "Convert a single AAX file.")
 	flag.Parse()
 
-	// Read required information from the data file.  If it isn't present,
-	// tell the user how to create it.
-	if err := readDataFile(&cfg); err != nil {
-		if os.IsNotExist(err) && (abytes == "" || harpath == "") {
-			fmt.Printf(noDataFileError)
-			os.Exit(0)
-		} else if !os.IsNotExist(err) {
+	// If the cache file exists, read it, otherwise check if we're
+	// only converting a single book and exit if not
+	if fileExists(".audible-dl.json") {
+		raw, err := ioutil.ReadFile(".audible-dl.json")
+		if err != nil {
 			log.Fatal(err)
 		}
+		cfg.InitFromJson(raw)
+	} else if aaxpath == "" {
+		fmt.Printf(noDataFileError)
+		os.Exit(1)
 	}
 
 	// Handle command-line arguments used to build the data file.  Cookies
