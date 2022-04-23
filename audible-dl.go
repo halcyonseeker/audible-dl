@@ -6,9 +6,11 @@ import (
 	"flag"
 	"fmt"
 	"gopkg.in/yaml.v2"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 )
 
 ////////////////////////////////////////////////////////////////////////
@@ -54,6 +56,27 @@ type Account struct {
 	Name  string
 	Bytes string
 	Auth  []*http.Cookie
+}
+
+func (a *Account) ImportCookiesFromHAR(raw []byte) {
+	var har map[string]interface{}
+
+	unwrap(json.Unmarshal(raw, &har))
+
+	cookies := har["log"].(map[string]interface{})["entries"].([]interface{})[0].(map[string]interface{})["request"].(map[string]interface{})["cookies"].([]interface{})
+
+	for _, c := range cookies {
+		value := c.(map[string]interface{})["value"].(string)
+		// The values of some non-essential cookies contain a double
+		// quote character which net/http really doesn't like
+		if strings.Contains(value, "\"") {
+			continue
+		}
+		a.Auth = append(a.Auth, &http.Cookie{
+			Name:  c.(map[string]interface{})["name"].(string),
+			Value: value,
+		})
+	}
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -218,10 +241,15 @@ func getCookies(client Client, authdir string) {
 
 func doImportCookies(client Client, account string, harpath string, authdir string) {
 	account, err := needAccount(client, account)
+	authpath := authdir + account + ".cookies.json"
 	unwrap(err)
-	fmt.Println("FOR ACCOUNT ", account)
-	fmt.Println("IMPORTING   ", harpath)
-	fmt.Println("INTO FILE   ", authdir+account+".cookies.json")
+	a := client.FindAccount(account)
+	raw, err := ioutil.ReadFile(harpath)
+	unwrap(err)
+	a.ImportCookiesFromHAR(raw)
+	json, _ := json.MarshalIndent(a.Auth, "", "  ")
+	unwrap(ioutil.WriteFile(authpath, json, 0644))
+	fmt.Printf("Imported cookies from %s into %s\n", harpath, authpath)
 }
 
 func doConvertSingleBook(client Client, account string, aaxpath string) {
