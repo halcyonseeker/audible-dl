@@ -6,10 +6,13 @@ import (
 	"flag"
 	"fmt"
 	"gopkg.in/yaml.v2"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -77,6 +80,29 @@ func (a *Account) ImportCookiesFromHAR(raw []byte) {
 			Value: value,
 		})
 	}
+}
+
+func (a *Account) Convert(in, out string, client Client) (error, []byte) {
+	tmp := client.TempDir + filepath.Base(out)
+	cmd := exec.Command("ffmpeg",
+		"-activation_bytes", a.Bytes,
+		"-i", in,
+		"-c", "copy",
+		tmp)
+	cmd.Stdout = nil
+	stderr, _ := cmd.StderrPipe()
+	err := cmd.Start()
+	slurp, _ := io.ReadAll(stderr)
+	if err != nil {
+		return err, slurp
+	}
+	if err = cmd.Wait(); err != nil {
+		return err, slurp
+	}
+	if err = os.Rename(tmp, out); err != nil {
+		return err, nil
+	}
+	return nil, nil
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -255,8 +281,20 @@ func doImportCookies(client Client, account string, harpath string, authdir stri
 func doConvertSingleBook(client Client, account string, aaxpath string) {
 	account, err := needAccount(client, account)
 	unwrap(err)
-	fmt.Println("WITH ACCOUNT", account)
-	fmt.Println("CONVERTING  ", aaxpath)
+	a := client.FindAccount(account)
+	var m4bpath string
+	if aaxpath[len(aaxpath)-4:] == ".aax" {
+		m4bpath = aaxpath[:len(aaxpath)-4] + ".m4b"
+	} else {
+		m4bpath = aaxpath + ".m4b"
+	}
+	err, ffmpegstderr := a.Convert(aaxpath, m4bpath, client)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", ffmpegstderr)
+		log.Fatalf("Failed to convert %s with bytes %s\n",
+			filepath.Base(aaxpath), a.Bytes)
+	}
+	fmt.Printf("Made %s with %s's bytes\n", filepath.Base(m4bpath), a.Name)
 }
 
 func doScrapeLibrary(client Client, account string) {
