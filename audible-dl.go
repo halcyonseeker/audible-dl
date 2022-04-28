@@ -40,7 +40,8 @@ func (c *Client) Validate() {
 			log.Fatal("Account name not specified in config file.")
 		}
 		if a.Bytes == "" {
-			log.Fatal("Activation bytes not present for account " + a.Name)
+			log.Fatal("Activation bytes not present for account " +
+				a.Name)
 		}
 		// It's okay not to have cookies
 	}
@@ -265,7 +266,7 @@ func getCookies(client Client, authdir string) {
 //  \__,_|\___|\__|_|\___/|_| |_|___/
 ////////////////////////////////////////////////////////////////////////
 
-func doImportCookies(client Client, account string, harpath string, authdir string) {
+func doImportCookies(client Client, account, harpath, authdir string) {
 	account, err := needAccount(client, account)
 	authpath := authdir + account + ".cookies.json"
 	unwrap(err)
