@@ -57,9 +57,10 @@ func (c *Client) FindAccount(name string) *Account {
 }
 
 type Account struct {
-	Name  string
-	Bytes string
-	Auth  []*http.Cookie
+	Name   string
+	Bytes  string
+	Auth   []*http.Cookie
+	Scrape bool
 }
 
 func (a *Account) ImportCookiesFromHAR(raw []byte) {
@@ -250,6 +251,9 @@ func getData(cfgfile, authdir, tempdir, savedir string) Client {
 
 func getCookies(client Client, authdir string) {
 	for _, a := range client.Accounts {
+		if !a.Scrape {
+			continue
+		}
 		path := authdir + a.Name + ".cookies.json"
 		raw, err := os.ReadFile(path)
 		expect(err, "Couldn't find any cookies for account "+a.Name)
@@ -299,20 +303,24 @@ func doConvertSingleBook(client Client, account string, aaxpath string) {
 }
 
 func doScrapeLibrary(client Client, account string) {
-	a := client.FindAccount(account)
-	if a != nil {
-		fmt.Println("SCRAPING LIBRARY")
-		fmt.Println("INTO TEMP    ", client.TempDir)
-		fmt.Println("THEN INTO DIR", client.SaveDir)
+	fmt.Println("SCRAPING LIBRARY")
+	fmt.Println("INTO TEMP    ", client.TempDir)
+	fmt.Println("THEN INTO DIR", client.SaveDir)
+	var toscrape []Account
+	if a := client.FindAccount(account); a != nil {
+		toscrape = append(toscrape, *a)
+		if !a.Scrape {
+			log.Fatalf("Account %s has `scrape' set to false.",
+				a.Name)
+		}
+	} else {
+		toscrape = client.Accounts
+	}
+	for _, a := range toscrape {
+		if !a.Scrape {
+			continue
+		}
 		fmt.Println("FOR ACCOUNT  ", a.Name)
 		fmt.Println("WITH BYTES   ", a.Bytes)
-	} else {
-		fmt.Println("SCRAPING LIBRARY")
-		fmt.Println("INTO TEMP    ", client.TempDir)
-		fmt.Println("THEN INTO DIR", client.SaveDir)
-		for _, a := range client.Accounts {
-			fmt.Println("FOR ACCOUNT  ", a.Name)
-			fmt.Println("WITH BYTES   ", a.Bytes)
-		}
 	}
 }
