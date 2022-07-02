@@ -537,6 +537,20 @@ Options:
   -s, --single  AAX  Convert the single AAX file specified in AAX.
 `
 
+const debugScraperMessage string = `I encountered an error while scraping your library.
+There are two likely causes of this:
+
+  1. Your authentication cookies for %s have expired.  You can re-import
+     them with "audible-dl -i path/to/cookies.har -a %s", see the man
+     page for details.
+  2. Audible changed the structure of their website.  This is most likely the
+     case if the file .audible-dl-debug.html contains a list of books or
+     otherwise looks like you were signed in correctly.
+
+If re-importing your cookies doesn't help, please email a bug report to
+"~thalia/audible-dl@lists.sr.ht", see the man page for details.
+`
+
 func unwrap(err interface{}) {
 	if err != nil {
 		log.Fatal(err)
@@ -714,10 +728,11 @@ func doScrapeLibrary(client Client, account string) {
 		wg.Wait()
 
 		if err != nil {
-			fmt.Println("BEGIN SCRAPER LOG")
+			fmt.Fprintf(os.Stderr, "BEGIN SCRAPER LOG\n")
 			a.PrintScraperDebuggingInfo()
-			fmt.Println("END SCRAPER LOG")
-			log.Fatal(err)
+			fmt.Fprintf(os.Stderr, "END SCRAPER LOG\n")
+			log.Println(err)
+			fmt.Fprintf(os.Stderr, debugScraperMessage, a.Name, a.Name)
 		}
 
 		for _, b := range books {
