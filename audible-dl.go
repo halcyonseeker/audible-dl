@@ -220,7 +220,8 @@ func (a *Account) ScrapeLibraryUntil(pagenum chan int, lim string) ([]Book, erro
 				}
 				continue
 			} else {
-				a.Log("Token doesn't begin a book: %s")
+				a.Log("Token doesn't begin a book: %s",
+					cleanstr(tok.String()))
 			}
 
 			// exit inner loop when we reach the end end
