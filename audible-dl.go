@@ -83,6 +83,19 @@ type Account struct {
 	Bytes  string
 	Auth   []*http.Cookie
 	Scrape bool
+	LogBuf bytes.Buffer
+}
+
+// Flush the contents of a.Log to stderr in order to make it easier to
+// debug the scraper's progress.
+func (a *Account) PrintScraperDebuggingInfo() {
+	fmt.Fprintln(os.Stderr, a.LogBuf.String())
+}
+
+// Log the scraper's debugging info to the internal buffer to be
+// printed by the above method.
+func (a *Account) Log(str string, args ...any) {
+	a.LogBuf.WriteString(a.Name + ": " + fmt.Sprintf(str, args...) + "\n")
 }
 
 func (a *Account) ImportCookiesFromHAR(raw []byte) {
@@ -139,6 +152,8 @@ func (a *Account) getLibraryPage(page int) ([]byte, error) {
 	jaruri, _ := url.ParseRequestURI(uri)
 	jar.SetCookies(jaruri, a.Auth)
 
+	a.Log("Fetching library page %d", page)
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -175,20 +190,23 @@ func (a *Account) ScrapeLibraryUntil(pagenum chan int, lim string) ([]Book, erro
 			return nil, err
 		}
 
+		a.Log("Tokenizing page %d", i)
+
 		dom := html.NewTokenizer(bytes.NewReader(raw))
 
 		for {
 			tt := dom.Next()
 			tok := dom.Token()
 			if tokBeginsBook(tt, tok) {
+				a.Log("Found a book row")
 				// If we find a book, extract it
 				book := xSingleBook(dom, tt, tok)
 				if book.Slug == firstinprevpage {
-					// We've reached a duplicate page
+					a.Log("Reached a duplicate page")
 					return books, nil
 				}
 				if book.FileName == lim && lim != "" {
-					// We've reached the final book
+					a.Log("Reached the final book")
 					return books, nil
 				}
 				books = append(books, book)
@@ -692,7 +710,13 @@ func doScrapeLibrary(client Client, account string) {
 		}()
 		books, err := a.ScrapeFullLibrary(ch)
 		wg.Wait()
-		unwrap(err)
+
+		if err != nil {
+			fmt.Println("BEGIN SCRAPER LOG")
+			a.PrintScraperDebuggingInfo()
+			fmt.Println("END SCRAPER LOG")
+			log.Fatal(err)
+		}
 
 		for _, b := range books {
 			fmt.Println(b)
