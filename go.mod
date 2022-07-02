@@ -1,8 +1,8 @@
-module git.sr.ht/~thalia/audible-dl
+module ulthar.xyz/audible-dl
 
-go 1.16
+go 1.18
 
 require (
-	golang.org/x/net v0.0.0-20210520170846-37e1c6afe023
-	gopkg.in/yaml.v2 v2.4.0 // indirect
+	golang.org/x/net v0.0.0-20220630215102-69896b714898
+	gopkg.in/yaml.v2 v2.4.0
 )
