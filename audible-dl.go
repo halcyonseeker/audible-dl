@@ -200,7 +200,7 @@ func (a *Account) ScrapeLibraryUntil(pagenum chan int, lim string) ([]Book, erro
 			if tokBeginsBook(tt, tok) {
 				a.Log("Found a book row")
 				// If we find a book, extract it
-				book := xSingleBook(dom, tt, tok)
+				book := a.xSingleBook(dom, tt, tok)
 				if book.Slug == firstinprevpage {
 					a.Log("Reached a duplicate page")
 					return books, nil
@@ -219,6 +219,8 @@ func (a *Account) ScrapeLibraryUntil(pagenum chan int, lim string) ([]Book, erro
 					firstinprevpage = book.Slug
 				}
 				continue
+			} else {
+				a.Log("Token doesn't begin a book: %s")
 			}
 
 			// exit inner loop when we reach the end end
@@ -402,7 +404,7 @@ func xSeries(dom *html.Tokenizer, tt html.TokenType, tok html.Token) (string, in
 }
 
 // Fill in the structure for a single book
-func xSingleBook(dom *html.Tokenizer, tt html.TokenType, tok html.Token) Book {
+func (a *Account) xSingleBook(dom *html.Tokenizer, tt html.TokenType, tok html.Token) Book {
 	var book Book
 
 	// First we'll extract the book's slug from its div's id
