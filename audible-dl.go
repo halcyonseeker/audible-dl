@@ -42,6 +42,7 @@ var logFile *os.File = nil
 type Client struct {
 	SaveDir    string
 	TempDir    string
+	DataDir    string
 	Accounts   []Account
 	Downloaded map[string]Book
 }
@@ -514,7 +515,7 @@ func (a *Account) xSingleBook(dom *html.Tokenizer, tt html.TokenType, tok html.T
 func main() {
 	account, harpath, aaxpath, savelog := getArgs()
 	cfgfile, datadir, tempdir, savedir := getPaths()
-	client := getData(cfgfile, tempdir, savedir)
+	client := getData(cfgfile, tempdir, savedir, datadir)
 	client.Validate()
 
 	log.Println("ACCOUNT", account)
@@ -536,7 +537,7 @@ func main() {
 	}
 
 	if harpath != "" {
-		doImportCookies(client, account, harpath, datadir)
+		doImportCookies(client, account, harpath)
 		os.Exit(0)
 	}
 
@@ -545,8 +546,8 @@ func main() {
 		os.Exit(0)
 	}
 
-	getCookies(client, datadir)
-	getDownloaded(client, datadir)
+	getCookies(client)
+	getDownloaded(client)
 	doScrapeLibrary(client, account)
 
 	logFile.Close()
@@ -668,25 +669,27 @@ func getArgs() (string, string, string, bool) {
 	return a, h, s, l
 }
 
-func getData(cfgfile, tempdir, savedir string) Client {
+func getData(cfgfile, tempdir, savedir, datadir string) Client {
 	var client Client
+	client.Downloaded = make(map[string]Book)
 	raw, err := os.ReadFile(cfgfile)
 	expect(err, "Please create the config file with at least one account")
 	expect(yaml.Unmarshal(raw, &client), "Bad yaml in config file")
 	client.TempDir = tempdir
+	client.DataDir = datadir
 	if os.Getenv("AUDIBLE_DL_ROOT") != "" {
 		client.SaveDir = savedir
 	}
 	return client
 }
 
-func getCookies(client Client, datadir string) {
+func getCookies(client Client) {
 	for i := 0; i < len(client.Accounts); i++ {
 		a := &client.Accounts[i]
 		if !a.Scrape {
 			continue
 		}
-		path := datadir + a.Name + ".cookies.json"
+		path := client.DataDir + a.Name + ".cookies.json"
 		raw, err := os.ReadFile(path)
 		expect(err, "Couldn't find any cookies for account "+a.Name)
 		expect(json.Unmarshal(raw, &a.Auth),
@@ -696,9 +699,9 @@ func getCookies(client Client, datadir string) {
 
 // Populate client's hash table of previously downloaded books from a
 // json file.
-func getDownloaded(client Client, datadir string) {
+func getDownloaded(client Client) {
 	var books []Book
-	path := datadir + "downloaded_books.json"
+	path := client.DataDir + "downloaded_books.json"
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		// It's okay for the file not to exist
@@ -721,9 +724,9 @@ func getDownloaded(client Client, datadir string) {
 //  \__,_|\___|\__|_|\___/|_| |_|___/
 ////////////////////////////////////////////////////////////////////////
 
-func doImportCookies(client Client, account, harpath, datadir string) {
+func doImportCookies(client Client, account, harpath string) {
 	account, err := needAccount(client, account)
-	authpath := datadir + account + ".cookies.json"
+	authpath := client.DataDir + account + ".cookies.json"
 	unwrap(err)
 	a := client.FindAccount(account)
 	raw, err := ioutil.ReadFile(harpath)
