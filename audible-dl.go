@@ -652,7 +652,8 @@ func getData(cfgfile, authdir, tempdir, savedir string) Client {
 }
 
 func getCookies(client Client, authdir string) {
-	for _, a := range client.Accounts {
+	for i := 0; i < len(client.Accounts); i++ {
+		a := &client.Accounts[i]
 		if !a.Scrape {
 			continue
 		}
