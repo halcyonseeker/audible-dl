@@ -500,8 +500,8 @@ func (a *Account) xSingleBook(dom *html.Tokenizer, tt html.TokenType, tok html.T
 
 func main() {
 	account, harpath, aaxpath := getArgs()
-	cfgfile, authdir, tempdir, savedir := getPaths()
-	client := getData(cfgfile, authdir, tempdir, savedir)
+	cfgfile, datadir, tempdir, savedir := getPaths()
+	client := MakeClient(cfgfile, tempdir, savedir)
 	client.Validate()
 
 	log.Println("ACCOUNT", account)
@@ -517,7 +517,7 @@ func main() {
 	log.Println("")
 
 	if harpath != "" {
-		doImportCookies(client, account, harpath, authdir)
+		doImportCookies(client, account, harpath, datadir)
 		os.Exit(0)
 	}
 
@@ -526,7 +526,7 @@ func main() {
 		os.Exit(0)
 	}
 
-	getCookies(client, authdir)
+	getCookies(client, datadir)
 	doScrapeLibrary(client, account)
 }
 
@@ -603,12 +603,12 @@ func needAccount(client Client, account string) (string, error) {
 ////////////////////////////////////////////////////////////////////////
 
 func getPaths() (string, string, string, string) {
-	var cfgfile, authdir, tempdir, savedir string
+	var cfgfile, datadir, tempdir, savedir string
 	root := os.Getenv("AUDIBLE_DL_ROOT")
 	if root != "" {
 		cfgfile = root + "/.audible-dl/config.yml"
-		authdir = root + "/.audible-dl/auth/"
-		tempdir = root + "/.audible-dl/temp/"
+		tempdir = root + "/.audible-dl/temp"
+		datadir = root + "/.audible-dl/"
 		savedir = root + "/"
 	} else {
 		conf, err := os.UserConfigDir()
@@ -616,11 +616,14 @@ func getPaths() (string, string, string, string) {
 		cach, err := os.UserCacheDir()
 		unwrap(err)
 		cfgfile = conf + "/audible-dl/config.yml"
-		authdir = cach + "/audible-dl/auth/"
 		tempdir = cach + "/audible-dl/temp/"
+		// FIXME: Ideally these would go in XDG_DATA_HOME but
+		// golang doesn't have an os.UserDataDir() so we're
+		// stricking them in with the config file instead.
+		datadir = conf + "/audible-dl/"
 		savedir = "" // Read later from config file
 	}
-	return cfgfile, authdir, tempdir, savedir
+	return cfgfile, datadir, tempdir, savedir
 }
 
 func getArgs() (string, string, string) {
@@ -639,7 +642,7 @@ func getArgs() (string, string, string) {
 	return a, h, s
 }
 
-func getData(cfgfile, authdir, tempdir, savedir string) Client {
+func getData(cfgfile, tempdir, savedir string) Client {
 	var client Client
 	raw, err := os.ReadFile(cfgfile)
 	expect(err, "Please create the config file with at least one account")
@@ -651,13 +654,13 @@ func getData(cfgfile, authdir, tempdir, savedir string) Client {
 	return client
 }
 
-func getCookies(client Client, authdir string) {
+func getCookies(client Client, datadir string) {
 	for i := 0; i < len(client.Accounts); i++ {
 		a := &client.Accounts[i]
 		if !a.Scrape {
 			continue
 		}
-		path := authdir + a.Name + ".cookies.json"
+		path := datadir + a.Name + ".cookies.json"
 		raw, err := os.ReadFile(path)
 		expect(err, "Couldn't find any cookies for account "+a.Name)
 		expect(json.Unmarshal(raw, &a.Auth),
@@ -673,9 +676,9 @@ func getCookies(client Client, authdir string) {
 //  \__,_|\___|\__|_|\___/|_| |_|___/
 ////////////////////////////////////////////////////////////////////////
 
-func doImportCookies(client Client, account, harpath, authdir string) {
+func doImportCookies(client Client, account, harpath, datadir string) {
 	account, err := needAccount(client, account)
-	authpath := authdir + account + ".cookies.json"
+	authpath := datadir + account + ".cookies.json"
 	unwrap(err)
 	a := client.FindAccount(account)
 	raw, err := ioutil.ReadFile(harpath)
