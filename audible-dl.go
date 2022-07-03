@@ -86,6 +86,18 @@ type Account struct {
 	LogBuf bytes.Buffer
 }
 
+func (a *Account) String() string {
+	ret := "Account:\n"
+	ret += "  Name:   " + a.Name + "\n"
+	ret += "  Bytes:  " + a.Bytes + "\n"
+	ret += "  Scrape: " + strconv.FormatBool(a.Scrape) + "\n"
+	ret += "  Auth:\n"
+	for _, c := range a.Auth {
+		ret += "    " + c.Name + ": " + c.Value + "\n"
+	}
+	return ret
+}
+
 // Flush the contents of a.Log to stderr in order to make it easier to
 // debug the scraper's progress.
 func (a *Account) PrintScraperDebuggingInfo() {
