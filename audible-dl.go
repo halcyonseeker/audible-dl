@@ -534,7 +534,7 @@ func main() {
 	if savelog {
 		var err error
 		logFile, err = os.OpenFile(".audible-dl-debug.log",
-			os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+			os.O_WRONLY|os.O_CREATE, 0644)
 		expect(err, "Failed to open log file for writing")
 	}
 
