@@ -437,38 +437,38 @@ func (a *Account) xSingleBook(dom *html.Tokenizer, tt html.TokenType, tok html.T
 	slug := id(tok)
 	book.Slug = slug[len(slug)-10:]
 
+	a.Log("Extracting a single book...")
+
 	for {
 		tt = dom.Next()
 		tok = dom.Token()
 
 		if strings.Contains(class(tok), "bc-image-inset-border") {
-			////////// COVER IMAGE
 			for _, a := range tok.Attr {
 				if a.Key == "src" {
 					book.CoverURL = cleanstr(a.Val)
 				}
 			}
+			a.Log("Found cover image URL: %s", book.CoverURL)
 		} else if class(tok) == "bc-text bc-size-headline3" {
-			////////// TITLE
 			tt = dom.Next()
 			tok = dom.Token()
 			book.Title = cleanstr(tok.Data)
+			a.Log("Found book title: %s", book.Title)
 			continue
 		} else if strings.Contains(class(tok), "authorLabel") {
-			////////// AUTHORS
 			book.Authors = xPeople(dom)
+			a.Log("Found book author(s): %s", book.Authors)
 			continue
 		} else if strings.Contains(class(tok), "narratorLabel") {
-			////////// NARRATORS
 			book.Narrators = xPeople(dom)
+			a.Log("Found book narrator(s): %s", book.Narrators)
 			continue
 		} else if strings.Contains(class(tok), "merchandisingSummary") {
-			////////// SUMMARY
 			book.Summary = xSummary(dom, tt, tok)
+			a.Log("Found book summary: %s...", book.Summary[:10])
 			continue
-
 		} else if id(tok) == "time-remaining-display-"+book.Slug {
-			////////// RUNTIME
 			for !(tt == html.EndTagToken && tok.Data == "span") {
 				tt = dom.Next()
 				tok = dom.Token()
@@ -476,25 +476,28 @@ func (a *Account) xSingleBook(dom *html.Tokenizer, tt html.TokenType, tok html.T
 					book.Runtime = cleanstr(tok.Data)
 				}
 			}
+			a.Log("Found book runtime: %s", book.Runtime)
 			continue
 		} else if strings.Contains(href(tok), "/series/") {
-			////////// SERIES and SERIESINDEX
 			book.Series, book.SeriesIndex = xSeries(dom, tt, tok)
 			continue
+			a.Log("Found book series and index: %s, %d",
+				book.Series, book.SeriesIndex)
 		} else if !strings.Contains(aria_label(tok), "DownloadPart ") &&
 			strings.Contains(href(tok), "cds.audible.com/download") {
-			////////// DOWNLOAD URL
 			book.DownloadURL = href(tok)
+			a.Log("Found book download URL: %s", book.DownloadURL)
 			continue
 		} else if href(tok) == "/companion-file/"+book.Slug {
-			////////// DOWNLOAD URL
 			book.CompanionURL = "https://audible.com" + cleanstr(href(tok))
+			a.Log("Found book companion UR: %s", book.CompanionURL)
 			continue
 		}
 
-		// We've arrived at the next book
+		// We've arrived at the next boo
 		if strings.Contains(class(tok), "library-item-divider") ||
 			id(tok) == "adbl-library-content-toast-messaging" {
+			a.Log("Breaking to next book")
 			break
 		}
 	}
