@@ -1,0 +1,207 @@
+package main
+
+import (
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
+	"path/filepath"
+	"sync"
+)
+
+////////////////////////////////////////////////////////////////////////
+//       _ _            _           _     _           _
+//   ___| (_) ___ _ __ | |_    ___ | |__ (_) ___  ___| |_
+//  / __| | |/ _ \ '_ \| __|  / _ \| '_ \| |/ _ \/ __| __|
+// | (__| | |  __/ | | | |_  | (_) | |_) | |  __/ (__| |_
+//  \___|_|_|\___|_| |_|\__|  \___/|_.__// |\___|\___|\__|
+//                                     |__/
+////////////////////////////////////////////////////////////////////////
+
+type Client struct {
+	SaveDir    string
+	TempDir    string
+	DataDir    string
+	Accounts   []Account
+	Downloaded map[string]Book
+}
+
+func (c *Client) Validate() {
+	if c.SaveDir == "" {
+		log.Fatal("savdir not specified on config file")
+	}
+	if c.TempDir == "" {
+		panic("Failed to infer TempDir!")
+	}
+	if len(c.Accounts) == 0 {
+		log.Fatal("Couldn't find any accounts in config file.")
+	}
+	for _, a := range c.Accounts {
+		if a.Name == "" {
+			log.Fatal("Account name not specified in config file.")
+		}
+		if a.Bytes == "" {
+			log.Fatal("Activation bytes not present for account " +
+				a.Name)
+		}
+		// It's okay not to have cookies
+	}
+}
+
+func (c *Client) FindAccount(name string) *Account {
+	for _, a := range c.Accounts {
+		if a.Name == name {
+			return &a
+		}
+	}
+	return nil
+}
+
+func (c *Client) NeedAccount(account string) (string, error) {
+	if len(c.Accounts) != 1 && account == "" {
+		return "", errors.New(
+			"You have multiple accounts set up, please specify one")
+	} else if account == "" {
+		return c.Accounts[0].Name, nil
+	} else if len(c.Accounts) > 1 && account != "" {
+		if c.FindAccount(account) == nil {
+			return "", errors.New(
+				"Account " + account + " doesn't exist")
+		}
+	}
+	return account, nil
+}
+
+func (c *Client) ImportCookies(account, harpath string) {
+	account, err := c.NeedAccount(account)
+	authpath := c.DataDir + account + ".cookies.json"
+	unwrap(err)
+	a := c.FindAccount(account)
+	raw, err := ioutil.ReadFile(harpath)
+	unwrap(err)
+	a.ImportCookiesFromHAR(raw)
+	json, _ := json.MarshalIndent(a.Auth, "", "  ")
+	unwrap(ioutil.WriteFile(authpath, json, 0644))
+	fmt.Printf("Imported cookies from %s into %s\n", harpath, authpath)
+}
+
+func (c *Client) ConvertSingleBook(account string, aaxpath string) string {
+	account, err := c.NeedAccount(account)
+	unwrap(err)
+	a := c.FindAccount(account)
+	var m4bpath string
+	if aaxpath[len(aaxpath)-4:] == ".aax" {
+		m4bpath = aaxpath[:len(aaxpath)-4] + ".m4b"
+	} else {
+		m4bpath = aaxpath + ".m4b"
+	}
+	err, ffmpegstderr := a.Convert(aaxpath, m4bpath, c)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", ffmpegstderr)
+		log.Fatalf("Failed to convert %s with bytes %s\n",
+			filepath.Base(aaxpath), a.Bytes)
+	}
+	return m4bpath
+}
+
+func (c *Client) GetCookies() {
+	for i := 0; i < len(c.Accounts); i++ {
+		a := &c.Accounts[i]
+		if !a.Scrape {
+			continue
+		}
+		path := c.DataDir + a.Name + ".cookies.json"
+		raw, err := os.ReadFile(path)
+		expect(err, "Couldn't find any cookies for account "+a.Name)
+		expect(json.Unmarshal(raw, &a.Auth),
+			"Unknown json in cookie file for account "+a.Name)
+	}
+}
+
+// Populate client's hash table of previously downloaded books from a
+// json file.
+func (c *Client) GetDownloaded() {
+	var books []Book
+	path := c.DataDir + "downloaded_books.json"
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		// It's okay for the file not to exist
+		if !os.IsNotExist(err) {
+			log.Fatal(err)
+		}
+		return
+	}
+	expect(json.Unmarshal(raw, &books), "Bad json in downloaded book file")
+	for _, b := range books {
+		c.Downloaded[b.Title] = b
+	}
+}
+
+// Write the map of downloaded books off to the file, overwriting its
+// old contents
+func (c *Client) SetDownloaded() {
+	var books []Book
+	for _, b := range c.Downloaded {
+		books = append(books, b)
+	}
+	json, _ := json.MarshalIndent(books, "", "  ")
+	unwrap(ioutil.WriteFile(c.DataDir+"downloaded_books.json", json, 0644))
+}
+
+func (c *Client) ScrapeLibrary(account string) {
+	var toscrape []Account
+	if a := c.FindAccount(account); a != nil {
+		toscrape = append(toscrape, *a)
+		if !a.Scrape {
+			log.Fatalf("Account %s has `scrape' set to false.",
+				a.Name)
+		}
+	} else {
+		toscrape = c.Accounts
+	}
+	for _, a := range toscrape {
+		if !a.Scrape {
+			continue
+		}
+		ch := make(chan int)
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			var t int
+			for i := range ch {
+				t = i
+				fmt.Printf("\x1b[2k\r\033[1mScraping Page\033[m %d", i)
+			}
+			fmt.Printf("\x1b[2k\r\033[1mScraped Page\033[m %d/%d\n", t, t)
+		}()
+		books, err := a.ScrapeFullLibrary(ch)
+		wg.Wait()
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "BEGIN SCRAPER LOG\n")
+			a.PrintScraperDebuggingInfo()
+			fmt.Fprintf(os.Stderr, "END SCRAPER LOG\n")
+			log.Println(err)
+			fmt.Fprintf(os.Stderr, debugScraperMessage, a.Name, a.Name)
+		}
+
+		for i := 0; i < len(books); i++ {
+			b := books[i]
+			if _, ok := c.Downloaded[b.Title]; ok {
+				continue
+			}
+			fmt.Printf("\033[1mDownloading Book\033[m %s...", b.Title)
+			aax := a.DownloadSingleBook(c, b)
+			fmt.Printf("done\n")
+			fmt.Printf("\033[1mConverting Book\033[m %s...", b.Title)
+			m4b := c.ConvertSingleBook(a.Name, aax)
+			unwrap(os.Rename(m4b, c.SaveDir+b.FileName+".m4b"))
+			fmt.Printf("done\n")
+			c.Downloaded[b.Title] = b
+			c.SetDownloaded()
+		}
+	}
+}
