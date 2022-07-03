@@ -106,7 +106,7 @@ func (c *Client) ImportCookies(account, harpath string) {
 	fmt.Printf("Imported cookies from %s into %s\n", harpath, authpath)
 }
 
-func (c *Client) ConvertSingleBook(account string, aaxpath string) {
+func (c *Client) ConvertSingleBook(account string, aaxpath string) string {
 	account, err := c.NeedAccount(account)
 	unwrap(err)
 	a := c.FindAccount(account)
@@ -122,7 +122,7 @@ func (c *Client) ConvertSingleBook(account string, aaxpath string) {
 		log.Fatalf("Failed to convert %s with bytes %s\n",
 			filepath.Base(aaxpath), a.Bytes)
 	}
-	fmt.Printf("Made %s with %s's bytes\n", filepath.Base(m4bpath), a.Name)
+	return m4bpath
 }
 
 func (c *Client) GetCookies() {
@@ -216,9 +216,8 @@ func (c *Client) ScrapeLibrary(account string) {
 			aax := a.DownloadSingleBook(c, b)
 			fmt.Printf("done\n")
 			fmt.Printf("\033[1mConverting Book\033[m %s...", b.Title)
-			c.ConvertSingleBook(a.Name, aax)
-			unwrap(os.Rename(c.TempDir+b.FileName+".aax",
-				c.SaveDir+b.FileName+".m4b"))
+			m4b := c.ConvertSingleBook(a.Name, aax)
+			unwrap(os.Rename(m4b, c.SaveDir+b.FileName+".m4b"))
 			fmt.Printf("done\n")
 			c.Downloaded[b.Title] = b
 			c.SetDownloaded()
@@ -709,7 +708,8 @@ func main() {
 	}
 
 	if aaxpath != "" {
-		client.ConvertSingleBook(account, aaxpath)
+		m4b := client.ConvertSingleBook(account, aaxpath)
+		fmt.Printf("%s: made %s\n", account, filepath.Base(m4b))
 		os.Exit(0)
 	}
 
