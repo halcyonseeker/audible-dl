@@ -23,6 +23,13 @@ import (
 	"sync"
 )
 
+// If the -l or --log flag is passed, in addition to logging to an
+// internal buffer, the scraper will log to the file
+// .audible-dl-debug.log.  The scraper runs synchronously so there
+// should be no risk of race conditions causing the contents of this
+// or the account buffers to be mangled
+var logFile *os.File = nil
+
 ////////////////////////////////////////////////////////////////////////
 //       _ _            _           _     _           _
 //   ___| (_) ___ _ __ | |_    ___ | |__ (_) ___  ___| |_
@@ -108,7 +115,12 @@ func (a *Account) PrintScraperDebuggingInfo() {
 // Log the scraper's debugging info to the internal buffer to be
 // printed by the above method.
 func (a *Account) Log(str string, args ...any) {
-	a.LogBuf.WriteString(a.Name + ": " + fmt.Sprintf(str, args...) + "\n")
+	line := a.Name + ": " + fmt.Sprintf(str, args...) + "\n"
+	a.LogBuf.WriteString(line)
+	if logFile != nil {
+		_, err := logFile.WriteString(line)
+		unwrap(err)
+	}
 }
 
 func (a *Account) ImportCookiesFromHAR(raw []byte) {
@@ -500,7 +512,7 @@ func (a *Account) xSingleBook(dom *html.Tokenizer, tt html.TokenType, tok html.T
 ////////////////////////////////////////////////////////////////////////
 
 func main() {
-	account, harpath, aaxpath := getArgs()
+	account, harpath, aaxpath, savelog := getArgs()
 	cfgfile, datadir, tempdir, savedir := getPaths()
 	client := getData(cfgfile, tempdir, savedir)
 	client.Validate()
@@ -516,6 +528,12 @@ func main() {
 	log.Println("")
 	log.Println(client)
 	log.Println("")
+	if savelog {
+		var err error
+		logFile, err = os.OpenFile(".audible-dl-debug.log",
+			os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+		expect(err, "Failed to open log file for writing")
+	}
 
 	if harpath != "" {
 		doImportCookies(client, account, harpath, datadir)
@@ -530,6 +548,8 @@ func main() {
 	getCookies(client, datadir)
 	getDownloaded(client, datadir)
 	doScrapeLibrary(client, account)
+
+	logFile.Close()
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -550,6 +570,7 @@ Options:
   -a, --account NAME Specify an account for the operation.
   -i, --import  HAR  Import login cookies from HAR.
   -s, --single  AAX  Convert the single AAX file specified in AAX.
+  -l, --log          Log scraper info to .audible-dl-debug.log
 `
 
 const debugScraperMessage string = `I encountered an error while scraping your library.
@@ -628,20 +649,23 @@ func getPaths() (string, string, string, string) {
 	return cfgfile, datadir, tempdir, savedir
 }
 
-func getArgs() (string, string, string) {
+func getArgs() (string, string, string, bool) {
 	var a, h, s string
+	var l bool
 	// FIXME: prevent duplicate flags
 	flag.StringVar(&a, "a", "", "")
 	flag.StringVar(&h, "i", "", "")
 	flag.StringVar(&s, "s", "", "")
+	flag.BoolVar(&l, "l", false, "")
 	flag.StringVar(&a, "account", "", "")
 	flag.StringVar(&h, "import", "", "")
 	flag.StringVar(&s, "single", "", "")
+	flag.BoolVar(&l, "log", false, "")
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, helpMessage)
 	}
 	flag.Parse()
-	return a, h, s
+	return a, h, s, l
 }
 
 func getData(cfgfile, tempdir, savedir string) Client {
