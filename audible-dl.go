@@ -78,6 +78,154 @@ func (c *Client) FindAccount(name string) *Account {
 	return nil
 }
 
+func (c *Client) NeedAccount(account string) (string, error) {
+	if len(c.Accounts) != 1 && account == "" {
+		return "", errors.New(
+			"You have multiple accounts set up, please specify one")
+	} else if account == "" {
+		return c.Accounts[0].Name, nil
+	} else if len(c.Accounts) > 1 && account != "" {
+		if c.FindAccount(account) == nil {
+			return "", errors.New(
+				"Account " + account + " doesn't exist")
+		}
+	}
+	return account, nil
+}
+
+func (c *Client) ImportCookies(account, harpath string) {
+	account, err := c.NeedAccount(account)
+	authpath := c.DataDir + account + ".cookies.json"
+	unwrap(err)
+	a := c.FindAccount(account)
+	raw, err := ioutil.ReadFile(harpath)
+	unwrap(err)
+	a.ImportCookiesFromHAR(raw)
+	json, _ := json.MarshalIndent(a.Auth, "", "  ")
+	unwrap(ioutil.WriteFile(authpath, json, 0644))
+	fmt.Printf("Imported cookies from %s into %s\n", harpath, authpath)
+}
+
+func (c *Client) ConvertSingleBook(account string, aaxpath string) {
+	account, err := c.NeedAccount(account)
+	unwrap(err)
+	a := c.FindAccount(account)
+	var m4bpath string
+	if aaxpath[len(aaxpath)-4:] == ".aax" {
+		m4bpath = aaxpath[:len(aaxpath)-4] + ".m4b"
+	} else {
+		m4bpath = aaxpath + ".m4b"
+	}
+	err, ffmpegstderr := a.Convert(aaxpath, m4bpath, c)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", ffmpegstderr)
+		log.Fatalf("Failed to convert %s with bytes %s\n",
+			filepath.Base(aaxpath), a.Bytes)
+	}
+	fmt.Printf("Made %s with %s's bytes\n", filepath.Base(m4bpath), a.Name)
+}
+
+func (c *Client) GetCookies() {
+	for i := 0; i < len(c.Accounts); i++ {
+		a := &c.Accounts[i]
+		if !a.Scrape {
+			continue
+		}
+		path := c.DataDir + a.Name + ".cookies.json"
+		raw, err := os.ReadFile(path)
+		expect(err, "Couldn't find any cookies for account "+a.Name)
+		expect(json.Unmarshal(raw, &a.Auth),
+			"Unknown json in cookie file for account "+a.Name)
+	}
+}
+
+// Populate client's hash table of previously downloaded books from a
+// json file.
+func (c *Client) GetDownloaded() {
+	var books []Book
+	path := c.DataDir + "downloaded_books.json"
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		// It's okay for the file not to exist
+		if !os.IsNotExist(err) {
+			log.Fatal(err)
+		}
+		return
+	}
+	expect(json.Unmarshal(raw, &books), "Bad json in downloaded book file")
+	for _, b := range books {
+		c.Downloaded[b.Title] = b
+	}
+}
+
+// Write the map of downloaded books off to the file, overwriting its
+// old contents
+func (c *Client) SetDownloaded() {
+	var books []Book
+	for _, b := range c.Downloaded {
+		books = append(books, b)
+	}
+	json, _ := json.MarshalIndent(books, "", "  ")
+	unwrap(ioutil.WriteFile(c.DataDir+"downloaded_books.json", json, 0644))
+}
+
+func (c *Client) ScrapeLibrary(account string) {
+	var toscrape []Account
+	if a := c.FindAccount(account); a != nil {
+		toscrape = append(toscrape, *a)
+		if !a.Scrape {
+			log.Fatalf("Account %s has `scrape' set to false.",
+				a.Name)
+		}
+	} else {
+		toscrape = c.Accounts
+	}
+	for _, a := range toscrape {
+		if !a.Scrape {
+			continue
+		}
+		ch := make(chan int)
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			var t int
+			for i := range ch {
+				t = i
+				fmt.Printf("\x1b[2k\r\033[1mScraping Page\033[m %d", i)
+			}
+			fmt.Printf("\x1b[2k\r\033[1mScraped Page\033[m %d/%d\n", t, t)
+		}()
+		books, err := a.ScrapeFullLibrary(ch)
+		wg.Wait()
+
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "BEGIN SCRAPER LOG\n")
+			a.PrintScraperDebuggingInfo()
+			fmt.Fprintf(os.Stderr, "END SCRAPER LOG\n")
+			log.Println(err)
+			fmt.Fprintf(os.Stderr, debugScraperMessage, a.Name, a.Name)
+		}
+
+		for i := 0; i < len(books); i++ {
+			b := books[i]
+			if _, ok := c.Downloaded[b.Title]; ok {
+				continue
+			}
+			fmt.Printf("\033[1mDownloading Book\033[m %s...", b.Title)
+			aax := a.DownloadSingleBook(c, b)
+			fmt.Printf("done\n")
+			fmt.Printf("\033[1mConverting Book\033[m %s...", b.Title)
+			c.ConvertSingleBook(a.Name, aax)
+			unwrap(os.Rename(c.TempDir+b.FileName+".aax",
+				c.SaveDir+b.FileName+".m4b"))
+			fmt.Printf("done\n")
+			c.Downloaded[b.Title] = b
+			c.SetDownloaded()
+		}
+	}
+}
+
 ////////////////////////////////////////////////////////////////////////
 //                                  _           _     _           _
 //   __ _  ___ ___ ___  _   _ _ __ | |_    ___ | |__ (_) ___  ___| |_
@@ -145,7 +293,7 @@ func (a *Account) ImportCookiesFromHAR(raw []byte) {
 	}
 }
 
-func (a *Account) Convert(in, out string, client Client) (error, []byte) {
+func (a *Account) Convert(in, out string, client *Client) (error, []byte) {
 	tmp := client.TempDir + filepath.Base(out)
 	cmd := exec.Command("ffmpeg",
 		"-activation_bytes", a.Bytes,
@@ -276,7 +424,7 @@ func (a *Account) ScrapeFullLibrary(pagenum chan int) ([]Book, error) {
 // in the temp directory, with an intermediate .part while
 // downloading.  The path to the aax is returned in order to be passed
 // to the converter.
-func (a *Account) DownloadSingleBook(client Client, book Book) string {
+func (a *Account) DownloadSingleBook(client *Client, book Book) string {
 	aax := client.TempDir + book.FileName + ".aax"
 	out, err := os.Create(aax + ".part")
 	unwrap(err)
@@ -556,18 +704,18 @@ func main() {
 	}
 
 	if harpath != "" {
-		doImportCookies(client, account, harpath)
+		client.ImportCookies(account, harpath)
 		os.Exit(0)
 	}
 
 	if aaxpath != "" {
-		doConvertSingleBook(client, account, aaxpath)
+		client.ConvertSingleBook(account, aaxpath)
 		os.Exit(0)
 	}
 
-	getCookies(client)
-	getDownloaded(client)
-	doScrapeLibrary(client, account)
+	client.GetCookies()
+	client.GetDownloaded()
+	client.ScrapeLibrary(account)
 
 	logFile.Close()
 }
@@ -620,21 +768,6 @@ func expect(err interface{}, why string) {
 		fmt.Fprintf(os.Stderr, helpMessage)
 		os.Exit(1)
 	}
-}
-
-func needAccount(client Client, account string) (string, error) {
-	if len(client.Accounts) != 1 && account == "" {
-		return "", errors.New(
-			"You have multiple accounts set up, please specify one")
-	} else if account == "" {
-		return client.Accounts[0].Name, nil
-	} else if len(client.Accounts) > 1 && account != "" {
-		if client.FindAccount(account) == nil {
-			return "", errors.New(
-				"Account " + account + " doesn't exist")
-		}
-	}
-	return account, nil
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -700,146 +833,4 @@ func getData(cfgfile, tempdir, savedir, datadir string) Client {
 		client.SaveDir = savedir
 	}
 	return client
-}
-
-func getCookies(client Client) {
-	for i := 0; i < len(client.Accounts); i++ {
-		a := &client.Accounts[i]
-		if !a.Scrape {
-			continue
-		}
-		path := client.DataDir + a.Name + ".cookies.json"
-		raw, err := os.ReadFile(path)
-		expect(err, "Couldn't find any cookies for account "+a.Name)
-		expect(json.Unmarshal(raw, &a.Auth),
-			"Unknown json in cookie file for account "+a.Name)
-	}
-}
-
-// Populate client's hash table of previously downloaded books from a
-// json file.
-func getDownloaded(client Client) {
-	var books []Book
-	path := client.DataDir + "downloaded_books.json"
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		// It's okay for the file not to exist
-		if !os.IsNotExist(err) {
-			log.Fatal(err)
-		}
-		return
-	}
-	expect(json.Unmarshal(raw, &books), "Bad json in downloaded book file")
-	for _, b := range books {
-		client.Downloaded[b.Title] = b
-	}
-}
-
-// Write the map of downloaded books off to the file, overwriting its
-// old contents
-func setDownloaded(client Client) {
-	var books []Book
-	for _, b := range client.Downloaded {
-		books = append(books, b)
-	}
-	json, _ := json.MarshalIndent(books, "", "  ")
-	unwrap(ioutil.WriteFile(client.DataDir+"downloaded_books.json",
-		json, 0644))
-}
-
-////////////////////////////////////////////////////////////////////////
-//             _   _
-//   __ _  ___| |_(_) ___  _ __  ___
-//  / _` |/ __| __| |/ _ \| '_ \/ __|
-// | (_| | (__| |_| | (_) | | | \__ \
-//  \__,_|\___|\__|_|\___/|_| |_|___/
-////////////////////////////////////////////////////////////////////////
-
-func doImportCookies(client Client, account, harpath string) {
-	account, err := needAccount(client, account)
-	authpath := client.DataDir + account + ".cookies.json"
-	unwrap(err)
-	a := client.FindAccount(account)
-	raw, err := ioutil.ReadFile(harpath)
-	unwrap(err)
-	a.ImportCookiesFromHAR(raw)
-	json, _ := json.MarshalIndent(a.Auth, "", "  ")
-	unwrap(ioutil.WriteFile(authpath, json, 0644))
-	fmt.Printf("Imported cookies from %s into %s\n", harpath, authpath)
-}
-
-func doConvertSingleBook(client Client, account string, aaxpath string) {
-	account, err := needAccount(client, account)
-	unwrap(err)
-	a := client.FindAccount(account)
-	var m4bpath string
-	if aaxpath[len(aaxpath)-4:] == ".aax" {
-		m4bpath = aaxpath[:len(aaxpath)-4] + ".m4b"
-	} else {
-		m4bpath = aaxpath + ".m4b"
-	}
-	err, ffmpegstderr := a.Convert(aaxpath, m4bpath, client)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", ffmpegstderr)
-		log.Fatalf("Failed to convert %s with bytes %s\n",
-			filepath.Base(aaxpath), a.Bytes)
-	}
-	fmt.Printf("Made %s with %s's bytes\n", filepath.Base(m4bpath), a.Name)
-}
-
-func doScrapeLibrary(client Client, account string) {
-	var toscrape []Account
-	if a := client.FindAccount(account); a != nil {
-		toscrape = append(toscrape, *a)
-		if !a.Scrape {
-			log.Fatalf("Account %s has `scrape' set to false.",
-				a.Name)
-		}
-	} else {
-		toscrape = client.Accounts
-	}
-	for _, a := range toscrape {
-		if !a.Scrape {
-			continue
-		}
-		ch := make(chan int)
-		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			var t int
-			for i := range ch {
-				t = i
-				fmt.Printf("\x1b[2k\r\033[1mScraping Page\033[m %d", i)
-			}
-			fmt.Printf("\x1b[2k\r\033[1mScraped Page\033[m %d/%d\n", t, t)
-		}()
-		books, err := a.ScrapeFullLibrary(ch)
-		wg.Wait()
-
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "BEGIN SCRAPER LOG\n")
-			a.PrintScraperDebuggingInfo()
-			fmt.Fprintf(os.Stderr, "END SCRAPER LOG\n")
-			log.Println(err)
-			fmt.Fprintf(os.Stderr, debugScraperMessage, a.Name, a.Name)
-		}
-
-		for i := 0; i < len(books); i++ {
-			b := books[i]
-			if _, ok := client.Downloaded[b.Title]; ok {
-				continue
-			}
-			fmt.Printf("\033[1mDownloading Book\033[m %s...", b.Title)
-			aax := a.DownloadSingleBook(client, b)
-			fmt.Printf("done\n")
-			fmt.Printf("\033[1mConverting Book\033[m %s...", b.Title)
-			doConvertSingleBook(client, a.Name, aax)
-			unwrap(os.Rename(client.TempDir+b.FileName+".aax",
-				client.SaveDir+b.FileName+".m4b"))
-			fmt.Printf("done\n")
-			client.Downloaded[b.Title] = b
-			setDownloaded(client)
-		}
-	}
 }
