@@ -33,9 +33,10 @@ import (
 ////////////////////////////////////////////////////////////////////////
 
 type Client struct {
-	SaveDir  string
-	TempDir  string
-	Accounts []Account
+	SaveDir    string
+	TempDir    string
+	Accounts   []Account
+	Downloaded map[string]Book
 }
 
 func (c *Client) Validate() {
@@ -527,6 +528,7 @@ func main() {
 	}
 
 	getCookies(client, datadir)
+	getDownloaded(client, datadir)
 	doScrapeLibrary(client, account)
 }
 
@@ -665,6 +667,25 @@ func getCookies(client Client, datadir string) {
 		expect(err, "Couldn't find any cookies for account "+a.Name)
 		expect(json.Unmarshal(raw, &a.Auth),
 			"Unknown json in cookie file for account "+a.Name)
+	}
+}
+
+// Populate client's hash table of previously downloaded books from a
+// json file.
+func getDownloaded(client Client, datadir string) {
+	var books []Book
+	path := datadir + "downloaded_books.json"
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		// It's okay for the file not to exist
+		if !os.IsNotExist(err) {
+			log.Fatal(err)
+		}
+		return
+	}
+	expect(json.Unmarshal(raw, &books), "Bad json in downloaded book file")
+	for _, b := range books {
+		client.Downloaded[b.Title] = b
 	}
 }
 
