@@ -481,11 +481,6 @@ func (a *Account) xSingleBook(dom *html.Tokenizer, tt html.TokenType, tok html.T
 			continue
 			a.Log("Found book series and index: %s, %d",
 				book.Series, book.SeriesIndex)
-		} else if !strings.Contains(aria_label(tok), "DownloadPart ") &&
-			strings.Contains(href(tok), "cds.audible.com/download") {
-			book.DownloadURL = href(tok)
-			a.Log("Found book download URL: %s", book.DownloadURL)
-			continue
 		} else if href(tok) == "/companion-file/"+book.Slug {
 			book.CompanionURL = "https://audible.com" + cleanstr(href(tok))
 			a.Log("Found book companion UR: %s", book.CompanionURL)
@@ -499,6 +494,8 @@ func (a *Account) xSingleBook(dom *html.Tokenizer, tt html.TokenType, tok html.T
 			break
 		}
 	}
+	book.DownloadURL = "https://www.audible.com/library/download?asin=" +
+		book.Slug + "&codec=AAX"
 	book.FileName = stripstr(book.Title)
 	return book
 }
