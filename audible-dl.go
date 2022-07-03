@@ -501,7 +501,7 @@ func (a *Account) xSingleBook(dom *html.Tokenizer, tt html.TokenType, tok html.T
 func main() {
 	account, harpath, aaxpath := getArgs()
 	cfgfile, datadir, tempdir, savedir := getPaths()
-	client := MakeClient(cfgfile, tempdir, savedir)
+	client := getData(cfgfile, tempdir, savedir)
 	client.Validate()
 
 	log.Println("ACCOUNT", account)
