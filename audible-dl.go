@@ -271,6 +271,39 @@ func (a *Account) ScrapeFullLibrary(pagenum chan int) ([]Book, error) {
 	return a.ScrapeLibraryUntil(pagenum, "")
 }
 
+// Download a single .aax file from Audible's website using the URL
+// discovered by the scraper.  The file is downloaded to a .aax file
+// in the temp directory, with an intermediate .part while
+// downloading.  The path to the aax is returned in order to be passed
+// to the converter.
+func (a *Account) DownloadSingleBook(client Client, book Book) string {
+	aax := client.TempDir + book.FileName + ".aax"
+	out, err := os.Create(aax + ".part")
+	unwrap(err)
+
+	jar, _ := cookiejar.New(nil)
+	httpcl := &http.Client{Jar: jar}
+	req, _ := http.NewRequest("GET", book.DownloadURL, nil)
+
+	jaruri, _ := url.ParseRequestURI(book.DownloadURL)
+	jar.SetCookies(jaruri, a.Auth)
+
+	resp, err := httpcl.Do(req)
+	unwrap(err)
+	if resp.StatusCode != http.StatusOK {
+		log.Fatal("Request returned " + resp.Status)
+	}
+
+	nbytes, err := io.Copy(out, resp.Body)
+	unwrap(err)
+	if nbytes != resp.ContentLength {
+		log.Fatal("Failed to write file to disk")
+	}
+
+	unwrap(os.Rename(aax+".part", aax))
+	return aax
+}
+
 ////////////////////////////////////////////////////////////////////////
 //                                             _   _ _ _ _
 //  ___  ___ _ __ __ _ _ __   ___ _ __   _   _| |_(_) (_) |_ ___  ___
@@ -713,6 +746,18 @@ func getDownloaded(client Client) {
 	}
 }
 
+// Write the map of downloaded books off to the file, overwriting its
+// old contents
+func setDownloaded(client Client) {
+	var books []Book
+	for _, b := range client.Downloaded {
+		books = append(books, b)
+	}
+	json, _ := json.MarshalIndent(books, "", "  ")
+	unwrap(ioutil.WriteFile(client.DataDir+"downloaded_books.json",
+		json, 0644))
+}
+
 ////////////////////////////////////////////////////////////////////////
 //             _   _
 //   __ _  ___| |_(_) ___  _ __  ___
@@ -797,8 +842,21 @@ func doScrapeLibrary(client Client, account string) {
 			fmt.Fprintf(os.Stderr, debugScraperMessage, a.Name, a.Name)
 		}
 
-		for _, b := range books {
-			fmt.Println(b)
+		for i := 0; i < len(books); i++ {
+			b := books[i]
+			if _, ok := client.Downloaded[b.Title]; ok {
+				continue
+			}
+			fmt.Printf("\033[1mDownloading Book\033[m %s...", b.Title)
+			aax := a.DownloadSingleBook(client, b)
+			fmt.Printf("done\n")
+			fmt.Printf("\033[1mConverting Book\033[m %s...", b.Title)
+			doConvertSingleBook(client, a.Name, aax)
+			unwrap(os.Rename(client.TempDir+b.FileName+".aax",
+				client.SaveDir+b.FileName+".m4b"))
+			fmt.Printf("done\n")
+			client.Downloaded[b.Title] = b
+			setDownloaded(client)
 		}
 	}
 }
