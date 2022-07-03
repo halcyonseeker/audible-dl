@@ -630,7 +630,7 @@ func getPaths() (string, string, string, string) {
 	root := os.Getenv("AUDIBLE_DL_ROOT")
 	if root != "" {
 		cfgfile = root + "/.audible-dl/config.yml"
-		tempdir = root + "/.audible-dl/temp"
+		tempdir = root + "/.audible-dl/temp/"
 		datadir = root + "/.audible-dl/"
 		savedir = root + "/"
 	} else {
