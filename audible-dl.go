@@ -244,9 +244,6 @@ func (a *Account) ScrapeLibraryUntil(pagenum chan int, lim string) ([]Book, erro
 					firstinprevpage = book.Slug
 				}
 				continue
-			} else {
-				a.Log("Token doesn't begin a book: %s",
-					cleanstr(tok.String()))
 			}
 
 			// exit inner loop when we reach the end end
