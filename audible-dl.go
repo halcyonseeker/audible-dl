@@ -548,17 +548,6 @@ func main() {
 	client := getData(cfgfile, tempdir, savedir, datadir)
 	client.Validate()
 
-	log.Println("ACCOUNT", account)
-	log.Println("HARPATH", harpath)
-	log.Println("AAXPATH", aaxpath)
-	log.Println("")
-	log.Println("cfgfile", cfgfile)
-	log.Println("authdir", authdir)
-	log.Println("tempdir", tempdir)
-	log.Println("savedir", savedir)
-	log.Println("")
-	log.Println(client)
-	log.Println("")
 	if savelog {
 		var err error
 		logFile, err = os.OpenFile(".audible-dl-debug.log",
@@ -799,9 +788,6 @@ func doConvertSingleBook(client Client, account string, aaxpath string) {
 }
 
 func doScrapeLibrary(client Client, account string) {
-	fmt.Println("SCRAPING LIBRARY")
-	fmt.Println("INTO TEMP    ", client.TempDir)
-	fmt.Println("THEN INTO DIR", client.SaveDir)
 	var toscrape []Account
 	if a := client.FindAccount(account); a != nil {
 		toscrape = append(toscrape, *a)
@@ -816,9 +802,6 @@ func doScrapeLibrary(client Client, account string) {
 		if !a.Scrape {
 			continue
 		}
-		fmt.Println("FOR ACCOUNT  ", a.Name)
-		fmt.Println("WITH BYTES   ", a.Bytes)
-
 		ch := make(chan int)
 		var wg sync.WaitGroup
 		wg.Add(1)
