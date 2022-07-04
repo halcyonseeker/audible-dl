@@ -107,12 +107,14 @@ If re-importing your cookies doesn't help, please email a bug report to
 "~thalia/audible-dl@lists.sr.ht", see the man page for details.
 `
 
+// Like Rust's .unwrap() method.
 func unwrap(err interface{}) {
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
+// Like Rust's .expect() method.
 func expect(err interface{}, why string) {
 	if err != nil {
 		log.Print(why)
@@ -130,6 +132,13 @@ func expect(err interface{}, why string) {
 //  \___|_| |_|\_/ |_|_|  \___/|_| |_|_| |_| |_|\___|_| |_|\__|
 ////////////////////////////////////////////////////////////////////////
 
+// Audible-dl needs to access several locations in the filesystem in
+// order to save downloaded books and discover config, auth, and cache
+// data.  Typically, it will look for internal files in the
+// OS-specific cache and config directories with downloaded books
+// stored in a location that the user must specify in the config
+// file.  If $AUDIBLE_DL_ROOT points to a directory, all program state
+// will live inside it.
 func getPaths() (string, string, string, string) {
 	var cfgfile, datadir, tempdir, savedir string
 	root := os.Getenv("AUDIBLE_DL_ROOT")
@@ -154,6 +163,7 @@ func getPaths() (string, string, string, string) {
 	return cfgfile, datadir, tempdir, savedir
 }
 
+// Read command-line arguments.
 func getArgs() (string, string, string, bool) {
 	var a, h, s string
 	var l bool
