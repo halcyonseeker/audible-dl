@@ -44,7 +44,7 @@ type Book struct {
 func main() {
 	account, harpath, aaxpath, savelog := getArgs()
 	cfgfile, datadir, tempdir, savedir := getPaths()
-	client := getData(cfgfile, tempdir, savedir, datadir)
+	client := MakeClient(cfgfile, tempdir, savedir, datadir)
 	client.Validate()
 
 	if savelog {
@@ -181,18 +181,4 @@ func getArgs() (string, string, string, bool) {
 	}
 	flag.Parse()
 	return a, h, s, l
-}
-
-func getData(cfgfile, tempdir, savedir, datadir string) Client {
-	var client Client
-	client.Downloaded = make(map[string]Book)
-	raw, err := os.ReadFile(cfgfile)
-	expect(err, "Please create the config file with at least one account")
-	expect(yaml.Unmarshal(raw, &client), "Bad yaml in config file")
-	client.TempDir = tempdir
-	client.DataDir = datadir
-	if os.Getenv("AUDIBLE_DL_ROOT") != "" {
-		client.SaveDir = savedir
-	}
-	return client
 }

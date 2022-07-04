@@ -28,6 +28,22 @@ type Client struct {
 	Downloaded map[string]Book
 }
 
+// Return a Client struct partially populated from the .yml file
+// passed in CFGFILE.
+func MakeClient(cfgfile, tempdir, savedir, datadir string) Client {
+	var client Client
+	client.Downloaded = make(map[string]Book)
+	raw, err := os.ReadFile(cfgfile)
+	expect(err, "Please create the config file with at least one account")
+	expect(yaml.Unmarshal(raw, &client), "Bad yaml in config file")
+	client.TempDir = tempdir
+	client.DataDir = datadir
+	if os.Getenv("AUDIBLE_DL_ROOT") != "" {
+		client.SaveDir = savedir
+	}
+	return client
+}
+
 func (c *Client) Validate() {
 	if c.SaveDir == "" {
 		log.Fatal("savdir not specified on config file")
