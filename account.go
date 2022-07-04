@@ -29,6 +29,8 @@ import (
 //                                                 |__/
 ////////////////////////////////////////////////////////////////////////
 
+// The client has a slice of these, each of which is unmartialed from
+// the list of accounts in the the .yml config file.
 type Account struct {
 	Name   string
 	Bytes  string
@@ -37,6 +39,8 @@ type Account struct {
 	LogBuf bytes.Buffer
 }
 
+// Return a string representation of the account for debugging
+// purposes.
 func (a *Account) String() string {
 	ret := "Account:\n"
 	ret += "  Name:   " + a.Name + "\n"
@@ -66,6 +70,8 @@ func (a *Account) Log(str string, args ...any) {
 	}
 }
 
+// Parse the contents of a .har archive passed in RAW into a slice of
+// cookies that can be passed to a HTTP GET request.
 func (a *Account) ImportCookiesFromHAR(raw []byte) {
 	var har map[string]interface{}
 
@@ -87,6 +93,9 @@ func (a *Account) ImportCookiesFromHAR(raw []byte) {
 	}
 }
 
+// Shell-out to ffmpeg in order to convert the .aax file in IN to the
+// .m4b file in OUT using this account's activation bytes.  On error,
+// return ffmpeg's output.
 func (a *Account) Convert(in, out string, client *Client) (error, []byte) {
 	tmp := client.TempDir + filepath.Base(out)
 	cmd := exec.Command("ffmpeg",
@@ -282,6 +291,7 @@ func (a *Account) ScrapeLibraryUntil(pagenum chan int, lim string) ([]Book, erro
 	}
 }
 
+// Return a slice of all the books in the user's library.
 func (a *Account) ScrapeFullLibrary(pagenum chan int) ([]Book, error) {
 	return a.ScrapeLibraryUntil(pagenum, "")
 }
