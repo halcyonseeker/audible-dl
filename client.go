@@ -20,6 +20,15 @@ import (
 //                                     |__/
 ////////////////////////////////////////////////////////////////////////
 
+// A single instance of the client struct is used to encapsulate all
+// internal state.  SaveDir is where we're saving completed .m4b
+// files, TempDir is where we're downloading .aax files to, and
+// DataDir is where we look for cache and authentication files.
+// Accounts is a slice of the accounts set up in the config file and
+// Downloaded is map of all the books we've previously downloaded.
+// This map is populated from a cache file which exists to allow the
+// user to rename and organize their collection after they've been
+// downloaded.
 type Client struct {
 	SaveDir    string
 	TempDir    string
@@ -44,6 +53,7 @@ func MakeClient(cfgfile, tempdir, savedir, datadir string) Client {
 	return client
 }
 
+// Make sure everything in the client is set up correctly.
 func (c *Client) Validate() {
 	if c.SaveDir == "" {
 		log.Fatal("savdir not specified on config file")
@@ -66,6 +76,8 @@ func (c *Client) Validate() {
 	}
 }
 
+// Given an account name (likely passed with -a on the command line),
+// return a pointer to the corresponding Account struct.
 func (c *Client) FindAccount(name string) *Account {
 	for _, a := range c.Accounts {
 		if a.Name == name {
@@ -75,6 +87,10 @@ func (c *Client) FindAccount(name string) *Account {
 	return nil
 }
 
+// Given an account name (likely passed with -a on the command line),
+// make sure it exists.  If an empty string is passed and there are
+// more than one accounts set up or if the requested account doesn't
+// exist, throw an error.
 func (c *Client) NeedAccount(account string) (string, error) {
 	if len(c.Accounts) != 1 && account == "" {
 		return "", errors.New(
@@ -90,6 +106,9 @@ func (c *Client) NeedAccount(account string) (string, error) {
 	return account, nil
 }
 
+// Given a .har file containing a full archive of a GET request to
+// audible.com/library/titles in HARPATH, import the cookies therein
+// into ACCOUNT's cookie store.
 func (c *Client) ImportCookies(account, harpath string) {
 	account, err := c.NeedAccount(account)
 	authpath := c.DataDir + account + ".cookies.json"
@@ -103,6 +122,8 @@ func (c *Client) ImportCookies(account, harpath string) {
 	fmt.Printf("Imported cookies from %s into %s\n", harpath, authpath)
 }
 
+// Using ACCOUNT's bytes, convert a single .aax file passed in AAXPATH
+// and return the path of the created .m4b file.
 func (c *Client) ConvertSingleBook(account string, aaxpath string) string {
 	account, err := c.NeedAccount(account)
 	unwrap(err)
@@ -122,6 +143,7 @@ func (c *Client) ConvertSingleBook(account string, aaxpath string) string {
 	return m4bpath
 }
 
+// For each account, load the cached cookies into memory.
 func (c *Client) GetCookies() {
 	for i := 0; i < len(c.Accounts); i++ {
 		a := &c.Accounts[i]
@@ -166,6 +188,9 @@ func (c *Client) SetDownloaded() {
 	unwrap(ioutil.WriteFile(c.DataDir+"downloaded_books.json", json, 0644))
 }
 
+// This function orchestrates the scraping, downloading, and
+// conversion of audiobooks for all configured acounts or the one
+// passed in ACCOUNT.  It also displays a progress report in stdout.
 func (c *Client) ScrapeLibrary(account string) {
 	var toscrape []Account
 	if a := c.FindAccount(account); a != nil {
