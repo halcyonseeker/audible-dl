@@ -51,6 +51,8 @@ func MakeClient(cfgfile, tempdir, savedir, datadir string) Client {
 	if os.Getenv("AUDIBLE_DL_ROOT") != "" {
 		client.SaveDir = savedir
 	}
+	os.MkdirAll(tempdir, 0755)
+	os.MkdirAll(savedir, 0755)
 	return client
 }
 
