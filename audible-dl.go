@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"log"
 	"os"
 	"path/filepath"
