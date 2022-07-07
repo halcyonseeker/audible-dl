@@ -1,0 +1,254 @@
+.\" http://man.openbsd.org/mdoc.7
+.Dd July 7, 2022
+.Dt AUDIBLE-DL 1
+.Os
+.Sh NAME
+.Nm audible-dl
+.Nd A downloader for your Audible audiobook library.
+.\"======================================================================
+.Sh SYNOPSIS
+.Nm audible-dl
+.Op Fl h, -help
+.Op Fl l, -log
+.Op Fl a, -account Ar account
+.Op Fl i, -import Ar file.har
+.Op Fl s, -single Ar file.aax
+.\"======================================================================
+.Sh DESCRIPTION
+.Pp
+.Nm
+is a simple command-line utility to create offline archives of your
+Audible library as DRM-free .m4b files, wrapping
+.Xr ffmpeg 1
+in order to crack Audible's DRM.  It supports multiple Audible
+accounts and can be used to convert pre-downloaded .aax files.
+.\"======================================================================
+.Ss Prerequisites
+.Pp
+In order for
+.Nm
+to be useful, you need two things.  Firstly, a HAR
+.Pq HTTP Archive Format
+file containing your Audible authentication cookies which we use to
+scrape your account.  You can get this
+by logging into
+.Lk https://audible.com
+in your browser, opening the network tab of the element inspector,
+then navigating to
+.Lk https://audible.com/library/titles
+and right-clicking on the GET request to that page, selecting
+.Qq Copy All As HAR .
+This can then be pasted into a file.  Secondly, your Audible
+activation bytes which are required to crack the DRM on .aax files.
+There are multiple ways to get them, the one I had the most luck with
+was a dedicated plugin for RainbowCrack; just follow the instructions
+on
+.Lk https://github.com/inAudible-NG/tables.
+.\"======================================================================
+.Pp
+Technically, only the second step is required if you just want to
+convert .aax files to .m4b files, though at that point you might as
+well just write a quick
+.Xr ffmpeg 1
+script instead.
+.\"======================================================================
+.Pp
+Once you have your activation bytes and authentication cookies, add
+the former to your config file (see
+.Sx audible-dl EXAMPLES )
+and import the latter with:
+.Bd -literal
+    audible-dl -i path/to/cookies.har
+.Ed
+.\"======================================================================
+.Ss Options
+.Pp
+.Nm
+supports a few command-line options:
+.Bl -tag -width DS
+.It Fl h, -help
+Display a quick help message.
+.It Fl l, -log
+Save a log of the scraper's progress into the file
+.Pa .audible-dl-debug.log .
+The contents of this file may be useful in bug reports.
+.It Fl a, -account Ar account
+Some operations like converting a single .aax file or importing
+authentication cookies from a .har file require that you specify an
+account with which to perform the operation.  The argument should be
+the account's
+.Em name
+field in the config file.  This option may be omitted if you have only
+one account set up.
+.It Fl i, -import Ar path/to/file.har
+Import authentication cookies from a HAR archive into the specified account.
+.It Fl s, -single Ar path/to/file.aax
+Convert a single .aax file into an .m4b file using the specified account.
+.El
+.\"======================================================================
+.Ss Configuration
+.Pp
+In order to use
+.Nm
+a YAML config file must be created.  At the very minimum it must
+contain a list named
+.Ic accounts
+where each entry contains at least a
+.Ic name
+and a
+.Ic bytes
+field.  If
+.Ev AUDIBLE_DL_ROOT
+is unset the file should also contain a
+.Ic savedir
+field specifying the directory in which to save downloaded
+audiobooks.  If that variable is set and
+.Ic savedir
+specifies a directory, then books are saved into that directory rather
+than the one pointed to by the variable.
+.Pp
+More config options may be added in the future, including naming
+rules for downloaded books and the ability to specify things like the
+.Ic savedir
+on a per-account basis.
+.\"======================================================================
+.Sh ENVIRONMENT
+.Bl -tag -width DS
+.It Ev AUDIBLE_DL_ROOT
+When set to an existing directory, tell
+.Nm
+to look for all of its state beneath it.  Downloaded books will be
+saved there and temporary and system files will be stored in the
+.Pa .audible-dl/
+subdirectory.
+.It Ev XDG_CONFIG_HOME
+By default,
+.Nm
+looks for its config file, authentication cookies, and list of
+downloaded books in the
+.Pa audible-dl/
+subdirectory.  The appropriate configuration directory is inferred
+using Golang's
+.Ic os.UserConfigDir()
+function which will return something completely different on Mac OS,
+Windows, and Plan 9.
+.It Ev XDG_CACHE_HOME
+By default,
+.Nm
+stores temporary intermediate files in the
+.Pa audible-dl/temp/
+directory.  The appropriate cache directory is inferred using Golang's
+.Ic os.UserCacheDir()
+function and will return different values on Mac OS, Windows, and Plan
+9.
+.El
+.\"======================================================================
+.Sh FILES
+.Bl -tag -width DS
+.It Pa config.yml
+The core configuration file.
+.It Pa downloaded_books.json
+A list of the books that have already been downloaded.  This file
+allows the you to organize and rename your audiobooks at your
+leisure.
+.It Pa [name].cookies.json
+Each account's authentication cookies.
+.El
+.\"======================================================================
+.Sh EXAMPLES
+.Ss Average use-case
+.Pp
+Most users will likely want to use
+.Nm
+to download books in its default run mode with
+.Ev AUDIBLE_DL_ROOT
+unset.  For someone with a single account, their config file,
+.Pa ~/.config/audible-dl/config.yml ,
+will look like this:
+.Bd -literal
+    savedir: "~/Audiobooks/Audible/"
+    accounts:
+      - name: "Personal"
+        bytes: "deadbeef"
+.Ed
+.Pp
+After running
+and
+.Pa ~/Audiobooks/Audible/
+will contain all their books as .m4b files ready to be transferred to
+a phone or mp3 player or indexed into an audiobook library browser.
+.\"======================================================================
+.Ss Keeping all state in a single directory
+.Pp
+I like to synchronize my media between several machines, so my
+preference is to keep everything in a single directory.  In my shell's
+rc file I have:
+.Bd -literal
+    export AUDIBLE_DL_ROOT="$HOME/media/audiobookes/audible"
+.Ed
+.Pp
+In
+.Pa ~/media/audiobooks/audible/.audible-dl/config.yml
+I have:
+.Bd -literal
+    accounts:
+      - name: "Personal"
+        bytes: "deadbeef"
+      - name: "Other"
+        bytes: "beefdead"
+.Ed
+.Pp
+Note that I have two accounts set up.
+.\"======================================================================
+.Sh SEE ALSO
+.Xr ffmpeg 1
+.Xr ffprobe 1
+.Rs
+.%B tables
+.%U https://github.com/inAudible-NG/tables
+.Re
+.Rs
+.%B Cozy
+.%U https://cozy.sh
+.Re
+.Rs
+.%B Voice
+.%U https://github.com/PaulWoitaschek/Voice
+.Re
+.Rs
+.%B OpenAudible
+.%U https://openaudible.org
+.Re
+.Rs
+.%B audiobookshelf
+.%U https://www.audiobookshelf.org
+.Re
+.\"======================================================================
+.Sh AUTHORS
+.An ꙮ Aq Mt ymir@ulthar.xyz
+.\"======================================================================
+.Sh HOME
+.Em https://sr.ht/~thalia/audible-dl
+.\"======================================================================
+.Sh BUGS
+.Pp
+As of the writing of this I am not aware of any bugs.  If you find
+any, most likely due to a change in Audible's website, please report
+them by sending a detailed email to
+.Mt ~thalia/audible-dl@lists.sr.ht .
+If possible, please attach the
+.Pa .audible-dl-debug.html
+and
+.Pa .audible-dl-debug.log
+files as well as your config file, cookie file(s), and downloaded
+books file with all personal info censored.
+.\"======================================================================
+.Sh SECURITY CONSIDERATIONS
+.Pp
+.Nm
+stores your Audible authentication cookies in plain-text json files.
+This means that an attacker who gains access to them will be able to
+log into your Audible account in the browser.  Ideally, we wouldn't
+have to manage sensitive data ourselves and would simply source your
+username and password from your system's keychain, but I've found
+Audible's login process to be too complex to easily reverse engineer.
