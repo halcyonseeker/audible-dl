@@ -217,24 +217,6 @@ func (c *Client) ScrapeLibrary(account string) {
 		if !a.Scrape {
 			continue
 		}
-
-		ch := make(chan int)
-		var wg sync.WaitGroup
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			scrapePrinter(ch)
-		}()
-		books, err := a.ScrapeFullLibrary(ch)
-		wg.Wait()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "BEGIN SCRAPER LOG\n")
-			a.PrintScraperDebuggingInfo()
-			fmt.Fprintf(os.Stderr, "END SCRAPER LOG\n")
-			log.Println(err)
-			fmt.Fprintf(os.Stderr, debugScraperMessage, a.Name, a.Name)
-		}
-
 		for i := 0; i < len(books); i++ {
 			b := books[i]
 			if _, ok := c.Downloaded[b.Title]; ok {
@@ -253,12 +235,29 @@ func (c *Client) ScrapeLibrary(account string) {
 	}
 }
 
-// Print the current status of the scraper on a single page
-func scrapePrinter(ch chan int) {
-	var t int
-	for i := range ch {
-		t = i
-		fmt.Printf("%s%s %d", clearline, bold("Scraping Page"), i)
+func scrapeLibraryWithPrinting(a *Account) []Book {
+	var wg sync.WaitGroup
+	ch := make(chan int)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		var npages int
+		for i := range ch {
+			npages = i
+			fmt.Printf("%s%s %d", clearline, bold("Scraping Page"),
+				npages)
+		}
+		fmt.Printf("%s%s %d/%d\n", clearline, bold("Scraped Page"),
+			npages, npages)
+	}()
+	books, err := a.ScrapeFullLibrary(ch)
+	wg.Wait()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "BEGIN SCRAPER LOG\n")
+		a.PrintScraperDebuggingInfo()
+		fmt.Fprintf(os.Stderr, "END SCRAPER LOG\n")
+		log.Println(err)
+		fmt.Fprintf(os.Stderr, debugScraperMessage, a.Name, a.Name)
 	}
-	fmt.Printf("%s%s %d/%d\n", clearline, bold("Scraped Page"), t, t)
+	return books
 }
