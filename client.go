@@ -209,21 +209,16 @@ func (c *Client) ScrapeLibrary(account string) {
 		if !a.Scrape {
 			continue
 		}
+
 		ch := make(chan int)
 		var wg sync.WaitGroup
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			var t int
-			for i := range ch {
-				t = i
-				fmt.Printf("\x1b[2k\r\033[1mScraping Page\033[m %d", i)
-			}
-			fmt.Printf("\x1b[2k\r\033[1mScraped Page\033[m %d/%d\n", t, t)
+			scrapePrinter(ch)
 		}()
 		books, err := a.ScrapeFullLibrary(ch)
 		wg.Wait()
-
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "BEGIN SCRAPER LOG\n")
 			a.PrintScraperDebuggingInfo()
@@ -248,4 +243,14 @@ func (c *Client) ScrapeLibrary(account string) {
 			c.SetDownloaded()
 		}
 	}
+}
+
+// Print the current status of the scraper on a single page
+func scrapePrinter(ch chan int) {
+	var t int
+	for i := range ch {
+		t = i
+		fmt.Printf("\x1b[2k\r\033[1mScraping Page\033[m %d", i)
+	}
+	fmt.Printf("\x1b[2k\r\033[1mScraped Page\033[m %d/%d\n", t, t)
 }
