@@ -245,12 +245,20 @@ func (c *Client) ScrapeLibrary(account string) {
 	}
 }
 
+// Escape code clear a line and move the cursor to the beginning
+const clearline string = "\x1b[2k\r"
+
+// Return S as bold text
+func bold(s string) string {
+	return "\033[1m" + s + "\033[m"
+}
+
 // Print the current status of the scraper on a single page
 func scrapePrinter(ch chan int) {
 	var t int
 	for i := range ch {
 		t = i
-		fmt.Printf("\x1b[2k\r\033[1mScraping Page\033[m %d", i)
+		fmt.Printf("%s%s %d", clearline, bold("Scraping Page"), i)
 	}
-	fmt.Printf("\x1b[2k\r\033[1mScraped Page\033[m %d/%d\n", t, t)
+	fmt.Printf("%s%s %d/%d\n", clearline, bold("Scraped Page"), t, t)
 }
