@@ -12,6 +12,14 @@ import (
 	"sync"
 )
 
+// Escape code clear a line and move the cursor to the beginning
+const clearline string = "\x1b[2k\r"
+
+// Return S as bold text
+func bold(s string) string {
+	return "\033[1m" + s + "\033[m"
+}
+
 ////////////////////////////////////////////////////////////////////////
 //       _ _            _           _     _           _
 //   ___| (_) ___ _ __ | |_    ___ | |__ (_) ___  ___| |_
@@ -243,14 +251,6 @@ func (c *Client) ScrapeLibrary(account string) {
 			c.SetDownloaded()
 		}
 	}
-}
-
-// Escape code clear a line and move the cursor to the beginning
-const clearline string = "\x1b[2k\r"
-
-// Return S as bold text
-func bold(s string) string {
-	return "\033[1m" + s + "\033[m"
 }
 
 // Print the current status of the scraper on a single page
