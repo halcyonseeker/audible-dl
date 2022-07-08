@@ -1,6 +1,9 @@
 audible-dl: An archiver for your Audible library
 ================================================
 
+**Audible-dl is functional per the documentation but there are still
+improvements to be made and kinks to be ironed out.**
+
 Audible-dl is an archiving tool that keeps an up-to-date, offline,
 archive of the audiobooks you've purchased with Audible as DRM-free,
 metadata rich, m4b files.
@@ -29,6 +32,10 @@ TODO
 - Implement asynchronous downloading.
 - Add some config options, primarily to give the user control over how
   the final files are named.
+- Fix "403 forbidden" error when downloading some books.
+- `Account.ScrapeLibraryUntil()`'s functionality isn't really being
+  used; add a flag and config option to take advantage of it in order
+  to reduce the time spent scraping the user's library.
 - Figure out a way of automatically finding activations bytes, maybe
   by integrating with the Rainbow Tables plugin.
 - When importing cookies, if there are multiple accounts in the config
